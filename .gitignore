@@ -1,0 +1,81 @@
+# --- Spring Boot & Maven ---
+target/
+.mvn/wrapper/maven-wrapper.jar
+!**/src/main/**/target/
+!**/src/test/**/target/
+!.mvn/wrapper/maven-wrapper.properties
+
+# --- IDEs & Editors ---
+# Eclipse / STS
+.apt_generated
+.classpath
+.factorypath
+.project
+.settings
+.springBeans
+.sts4-cache
+
+# IntelliJ IDEA
+.idea/
+*.iws
+*.iml
+*.ipr
+
+# NetBeans
+/nbproject/private/
+/nbbuild/
+/dist/
+/nbdist/
+/.nb-gradle/
+build/
+!**/src/main/**/build/
+!**/src/test/**/build/
+
+# VS Code
+.vscode/
+
+# --- Android & Gradle Build Files (Từ cấu hình quen thuộc của bạn) ---
+.gradle/
+.kotlin/
+**/build/
+**/.gradle/
+**/.kotlin/
+out/
+bin/
+gen/
+
+# --- Local Configuration & Secrets (CỰC KỲ QUAN TRỌNG) ---
+local.properties
+*.jks
+*.keystore
+google-services.json
+firebase-service-account.json
+
+# --- Built Application Files ---
+*.apk
+*.aab
+*.dex
+*.class
+
+# --- Native Build & Logs ---
+externalNativeBuild/
+obj/
+*.log
+**/*.log
+npm-debug.log
+yarn-error.log
+
+# --- OS-specific Files ---
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# --- Custom: Ignore Generated Text/Logs/Code Aggregation ---
+gom_code_*.txt
+Danh_sach_file_*.txt
+docs/gom_code_*.txt
+docs/Danh_sach_file_*.txt
