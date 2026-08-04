@@ -1,0 +1,82 @@
+.topic-card {
+  background: #ffffff;
+  border: 1px solid #e0e0e0;
+  border-radius: 16px;
+  padding: 16px;
+  transition: all 0.3s ease;
+  position: relative;
+}
+
+.topic-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+}
+
+.topic-status-icon {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  font-size: 20px;
+}
+
+.topic-card-btn {
+  transition: all 0.2s ease;
+}
+
+#topics-empty {
+  display: none;
+}
+
+#topics-empty.show {
+  display: block;
+}
+
+/* Color picker style */
+.color-picker-wrapper {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 8px;
+}
+.color-option {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  cursor: pointer;
+  border: 3px solid transparent;
+  transition: all 0.15s;
+}
+.color-option:hover {
+  transform: scale(1.15);
+}
+.color-option.active {
+  border-color: #1f2937;
+  box-shadow:
+    0 0 0 2px white,
+    0 0 0 4px #1f2937;
+}
+/* --- HIỆU ỨNG KÉO THẢ ĐỒNG BỘ VỚI NOTES --- */
+.quiz-card,
+.topic-card {
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease,
+    opacity 0.2s ease;
+  cursor: grab;
+}
+.quiz-card:active,
+.topic-card:active {
+  cursor: grabbing;
+}
+.col.dragging-card .quiz-card,
+.col.dragging-card .topic-card {
+  border: 2px dashed #3b82f6 !important;
+  background-color: #f0f9ff !important;
+  opacity: 0.5;
+  transform: scale(0.98);
+}
+.col.drag-over-card .quiz-card,
+.col.drag-over-card .topic-card {
+  border-right: 4px solid #3b82f6 !important;
+  transform: scale(1.02);
+}

@@ -1,0 +1,323 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Flashcard Từ Vựng Tiếng Anh - Study Space</title>
+
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+    />
+    <link
+      href="https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css"
+      rel="stylesheet"
+    />
+
+    <link rel="stylesheet" href="css/style.css" />
+    <link rel="stylesheet" href="css/sidebar.css" />
+    <link rel="stylesheet" href="css/navigation.css" />
+    <link rel="stylesheet" href="css/flashcard.css" />
+    <link rel="stylesheet" href="css/toast.css" />
+  </head>
+  <body>
+    <aside id="sidebar" class="sidebar"></aside>
+    <nav class="navbar"></nav>
+
+    <div class="main-container">
+      <div class="main-content">
+        <div class="container-fluid" id="flashcard-container">
+          <!-- Tạo chủ đề mới -->
+          <!-- Tiêu đề và Nút chức năng -->
+          <div class="row mb-4">
+            <div
+              class="col-12 d-flex justify-content-between align-items-center flex-wrap gap-3"
+            >
+              <h4 class="fw-bold m-0 d-flex align-items-center">
+                <i
+                  class="bx bxs-carousel text-primary me-2"
+                  style="font-size: 28px"
+                ></i>
+                Lật thẻ (Flashcard)
+              </h4>
+              <div class="d-flex align-items-center gap-2">
+                <button
+                  class="btn btn-primary rounded-pill fw-semibold d-flex align-items-center"
+                  data-bs-toggle="modal"
+                  data-bs-target="#addTopicModal"
+                >
+                  <i class="bx bx-plus me-1"></i> Thêm Chủ đề
+                </button>
+                <button
+                  class="btn btn-primary rounded-circle d-flex align-items-center justify-content-center"
+                  style="width: 38px; height: 38px"
+                  data-bs-toggle="modal"
+                  data-bs-target="#helpFlashcardModal"
+                  title="Hướng dẫn"
+                >
+                  <i class="bx bx-question-mark"></i>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Danh sách chủ đề -->
+          <div id="topics-section" class="row mb-4">
+            <div class="col-12">
+              <div class="card shadow-sm border-0 rounded-3">
+                <div
+                  class="card-header bg-white border-0 d-flex justify-content-between align-items-center"
+                >
+                  <h5 class="fw-bold m-0">
+                    <i class="bx bx-collection text-primary me-2"></i>Danh sách
+                    chủ đề từ vựng tiếng Anh
+                  </h5>
+                </div>
+                <div class="card-body">
+                  <div
+                    id="topics-list"
+                    class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-3"
+                  >
+                    <!-- Thẻ chủ đề sẽ được tạo ở đây -->
+                  </div>
+                  <div id="topics-empty" class="text-center text-muted py-5">
+                    <i class="bx bx-folder-open fs-1 mb-2 opacity-50"></i>
+                    <p>
+                      Chưa có chủ đề từ vựng nào. Hãy tạo bộ từ đầu tiên của
+                      bạn!
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal: Thêm Chủ đề -->
+    <div class="modal fade" id="addTopicModal" tabindex="-1">
+      <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 rounded-4 shadow">
+          <div class="modal-header border-bottom-0 pb-0">
+            <h5 class="modal-title fw-bold">Thêm chủ đề từ vựng mới</h5>
+            <button
+              type="button"
+              class="btn-close"
+              data-bs-dismiss="modal"
+            ></button>
+          </div>
+          <div class="modal-body">
+            <div class="mb-3">
+              <label class="form-label fw-semibold text-muted small"
+                >Nhập tên chủ đề tiếng Anh</label
+              >
+              <input
+                type="text"
+                id="topic-input"
+                class="form-control bg-light border-0"
+                placeholder="Ví dụ: Travel Vocabulary, Daily Communication..."
+              />
+            </div>
+            <div class="mb-4">
+              <label class="form-label fw-semibold text-muted small"
+                >Chọn số lượng từ (gợi ý)</label
+              >
+              <input
+                type="number"
+                id="count-input"
+                class="form-control bg-light border-0"
+                min="1"
+                max="100"
+                value="10"
+              />
+            </div>
+            <button
+              type="button"
+              id="btn-generate-prompt"
+              class="btn btn-primary w-100 rounded-pill fw-bold py-2"
+              data-bs-dismiss="modal"
+            >
+              <i class="bx bx-save me-1"></i>Lưu chủ đề & Copy Prompt
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal: Hướng dẫn Flashcard -->
+    <div class="modal fade" id="helpFlashcardModal" tabindex="-1">
+      <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content border-0 rounded-4 shadow">
+          <div class="modal-header border-bottom-0 pb-0">
+            <h5 class="modal-title fw-bold">
+              <i class="bx bx-info-circle text-primary me-2"></i>Hướng dẫn học
+              từ vựng tiếng Anh
+            </h5>
+            <button
+              type="button"
+              class="btn-close"
+              data-bs-dismiss="modal"
+            ></button>
+          </div>
+          <div class="modal-body">
+            <ol class="mb-0 text-dark" style="line-height: 1.8">
+              <li class="mb-2">
+                Nhấn <strong>Thêm Chủ đề</strong> và nhập tên chủ đề cùng số
+                lượng từ bạn muốn học.
+              </li>
+              <li class="mb-2">
+                Ấn <strong>Lưu chủ đề & Copy Prompt</strong> để nhận cấu trúc
+                prompt tối ưu nhất gửi cho AI (ChatGPT/Claude).
+              </li>
+              <li class="mb-2">
+                Dán JSON chứa thông tin tất cả các từ vựng mà AI trả về vào phần
+                <strong>Thêm/Chỉnh sửa</strong> để lưu.
+              </li>
+              <li class="mb-2">
+                Hệ thống tự động hỗ trợ hiển thị cả các dữ liệu cũ đã lưu trước
+                đây.
+              </li>
+              <li>
+                Chỉ khi chủ đề hợp lệ và hiện
+                <i class="bx bx-check-circle text-success"></i> thì mới có thể
+                ấn <strong>Bắt đầu</strong>.
+              </li>
+            </ol>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal: Chỉnh sửa chủ đề -->
+    <div class="modal fade" id="editTopicModal" tabindex="-1">
+      <div class="modal-dialog modal-dialog-centered" style="max-width: 900px">
+        <div
+          class="modal-content border-0 rounded-4 shadow"
+          style="height: 700px"
+        >
+          <div class="modal-header border-bottom-0 pb-0">
+            <h5 class="modal-title fw-bold">Chỉnh sửa chủ đề</h5>
+            <button
+              type="button"
+              class="btn-close"
+              data-bs-dismiss="modal"
+            ></button>
+          </div>
+          <div class="modal-body">
+            <div class="mb-3">
+              <div
+                class="d-flex justify-content-between align-items-center mb-1"
+              >
+                <label class="form-label fw-semibold text-muted small mb-0"
+                  >Tên chủ đề</label
+                >
+                <button
+                  type="button"
+                  id="btn-copy-edit-prompt"
+                  class="btn btn-sm btn-outline-primary rounded-pill d-flex align-items-center py-1 px-2"
+                  style="font-size: 12px"
+                >
+                  <i class="bx bx-copy me-1"></i> Sao chép prompt
+                </button>
+              </div>
+              <input
+                type="text"
+                id="edit-topic-name"
+                class="form-control bg-light border-0"
+              />
+            </div>
+            <div class="mb-3">
+              <label class="form-label fw-semibold text-muted small"
+                >Màu sắc chủ đề</label
+              >
+              <div
+                id="color-picker-container"
+                class="color-picker-wrapper"
+              ></div>
+            </div>
+            <div class="mb-3">
+              <label class="form-label fw-semibold text-muted small"
+                >Dữ liệu từ vựng (JSON)</label
+              >
+              <textarea
+                id="edit-topic-data"
+                class="form-control bg-light border-0 font-monospace"
+                rows="16"
+              ></textarea>
+            </div>
+          </div>
+          <div class="modal-footer border-top-0 pt-0">
+            <button
+              type="button"
+              class="btn btn-outline-secondary"
+              data-bs-dismiss="modal"
+            >
+              Hủy
+            </button>
+            <button
+              type="button"
+              id="btn-save-edit"
+              class="btn btn-primary rounded-pill"
+            >
+              Lưu thay đổi
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal: Chọn Vòng Kiểm Tra -->
+    <div class="modal fade" id="testRoundsModal" tabindex="-1">
+      <div class="modal-dialog modal-dialog-centered" style="max-width: 800px">
+        <div class="modal-content border-0 rounded-4 shadow">
+          <div class="modal-header border-bottom-0 pb-0">
+            <h5 class="modal-title fw-bold">
+              <i class="bx bx-list-check text-primary me-2"></i>Chọn Vòng Kiểm
+              Tra
+            </h5>
+            <div class="d-flex gap-2 align-items-center">
+              <button
+                type="button"
+                id="btn-reset-rounds"
+                class="btn btn-sm btn-warning rounded-pill fw-semibold"
+                title="Làm mới tiến độ"
+              >
+                <i class="bx bx-refresh"></i> Làm mới
+              </button>
+              <button
+                type="button"
+                class="btn-close m-0"
+                data-bs-dismiss="modal"
+              ></button>
+            </div>
+          </div>
+          <div class="modal-body p-4">
+            <!-- Container chứa 4 hàng (Vòng 1, 2, 3, 4) -->
+            <div class="d-flex flex-column gap-3" id="test-rounds-container">
+              <!-- JS sẽ tự động vẽ các hàng vào đây -->
+            </div>
+
+            <!-- Hàng 5: Nút Thêm vào kế hoạch -->
+            <div class="mt-4 pt-3 border-top text-center">
+              <button
+                type="button"
+                id="btn-add-to-plan"
+                class="btn btn-outline-primary rounded-pill fw-bold px-4 py-2 w-100"
+              >
+                <i class="bx bx-calendar-plus me-1"></i> Thêm vào kế hoạch
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="js/toast.js"></script>
+    <script src="js/sidebar.js"></script>
+    <script src="js/navigation.js"></script>
+    <script src="js/flashcard.js"></script>
+    <script src="js/drag_drop_helper.js"></script>
+  </body>
+</html>
