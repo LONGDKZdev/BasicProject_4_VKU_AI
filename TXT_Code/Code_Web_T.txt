@@ -1,0 +1,1 @@
+git config branch.Yusin.merge refs/heads/main
