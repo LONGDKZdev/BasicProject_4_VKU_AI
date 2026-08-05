@@ -1,0 +1,206 @@
+.chat-layout {
+    display: flex;
+    height: calc(100vh - 85px);
+    background-color: #fcf8f2;
+    color: #333;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+/* Sidebar trái đồng bộ màu */
+.chat-sidebar {
+    width: 280px;
+    background-color: #f5efe6;
+    border-right: 1px solid #eae2d8;
+    display: flex;
+    flex-direction: column;
+    padding: 15px;
+}
+
+.new-chat-btn {
+    background: #ffffff;
+    border: 1px solid #dcd6ce;
+    color: #333;
+    border-radius: 10px;
+    padding: 10px 14px;
+    text-align: left;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+.new-chat-btn:hover { background-color: #ebe4db; }
+
+.history-list {
+    flex: 1;
+    overflow-y: auto;
+    margin-top: 15px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+/* Item lịch sử chat kèm menu 3 chấm */
+.history-item-wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+    border-radius: 8px;
+    transition: background 0.2s;
+}
+.history-item-wrapper:hover { background-color: #eae2d8; }
+
+.history-item {
+    flex: 1;
+    padding: 10px 12px;
+    cursor: pointer;
+    color: #444;
+    font-size: 14px;
+    font-weight: 500;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.action-toggle {
+    padding: 8px;
+    cursor: pointer;
+    color: #666;
+    display: none;
+}
+.history-item-wrapper:hover .action-toggle { display: block; }
+
+/* Menu 3 chấm xổ xuống */
+.action-menu {
+    display: none;
+    position: absolute;
+    right: 10px;
+    top: 35px;
+    background: #ffffff;
+    border: 1px solid #dcd6ce;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    border-radius: 8px;
+    z-index: 100;
+    width: 120px;
+    padding: 4px 0;
+}
+.action-menu.show { display: block; }
+.action-menu button {
+    display: block;
+    width: 100%;
+    padding: 6px 12px;
+    text-align: left;
+    background: none;
+    border: none;
+    font-size: 13px;
+    color: #333;
+    cursor: pointer;
+}
+.action-menu button:hover { background-color: #f5efe6; }
+.action-menu .delete-btn { color: #dc3545; }
+
+/* Khung chat chính */
+.chat-main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    position: relative;
+    background-color: #fcf8f2;
+}
+
+/* Màn hình chào mừng kiểu Gemini */
+.welcome-screen {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 20px;
+}
+
+.chat-messages {
+    flex: 1;
+    overflow-y: auto;
+    padding: 30px 50px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+.message {
+    max-width: 75%;
+    padding: 14px 20px;
+    border-radius: 14px;
+    line-height: 1.6;
+    font-size: 15px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.02);
+}
+.message.user { background-color: #e2e8f0; color: #1e293b; align-self: flex-end; }
+.message.ai { background-color: #ffffff; color: #222; align-self: flex-start; border: 1px solid #eae2d8; }
+
+/* Ô nhập liệu */
+.chat-input-area {
+    padding: 20px 50px 30px 50px;
+}
+.input-box-wrapper {
+    background-color: #ffffff;
+    border-radius: 18px;
+    padding: 12px 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    border: 1px solid #dcd6ce;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.04);
+}
+.chat-textarea {
+    background: transparent;
+    border: none;
+    color: #333;
+    resize: none;
+    outline: none;
+    font-size: 15px;
+    max-height: 120px;
+}
+.chat-bottom-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-top: 1px solid #f0e9df;
+    padding-top: 8px;
+}
+.model-select {
+    background-color: #f5efe6;
+    color: #333;
+    border: 1px solid #dcd6ce;
+    border-radius: 10px;
+    padding: 6px 14px;
+    font-size: 14px;
+    font-weight: 600;
+    outline: none;
+    cursor: pointer;
+}
+.send-action-group { display: flex; align-items: center; gap: 10px; }
+.json-btn {
+    background: #f5efe6;
+    border: 1px solid #dcd6ce;
+    color: #555;
+    padding: 6px 12px;
+    border-radius: 10px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+}
+.send-btn {
+    background-color: #0d6efd;
+    border: none;
+    color: #fff;
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 18px;
+}

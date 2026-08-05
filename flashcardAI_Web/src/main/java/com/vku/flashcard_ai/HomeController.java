@@ -1,4 +1,4 @@
-package com.vku.flashcard_ai;
+package com.vku.flashcard_ai; // Hoặc package tương ứng của bạn
 
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -6,13 +6,27 @@ import org.springframework.web.bind.annotation.GetMapping;
 @Controller
 public class HomeController {
 
+    // Trang chủ Flashcard
     @GetMapping("/")
-    public String home() {
+    public String homePage() {
         return "flashcard";
     }
 
-    @GetMapping("/login")
-    public String loginPage() {
-        return "login"; // Trỏ tới file login.html trong templates
+    // Trang Chat AI
+    @GetMapping("/chat-ai")
+    public String chatAiPage() {
+        return "chat-ai";
+    }
+
+    // Trang Meet (Phòng họp / Camera / Mic / Socket)
+    @GetMapping("/meet")
+    public String meetPage() {
+        return "meet";
+    }
+
+    // Trang Cài đặt tài khoản
+    @GetMapping("/settings")
+    public String settingsPage() {
+        return "settings";
     }
 }

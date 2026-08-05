@@ -14,15 +14,16 @@
       rel="stylesheet"
     />
 
-    <link rel="stylesheet" href="css/style.css" />
+    <!-- <link rel="stylesheet" href="css/style.css" />
     <link rel="stylesheet" href="css/sidebar.css" />
     <link rel="stylesheet" href="css/navigation.css" />
     <link rel="stylesheet" href="css/flashcard.css" />
-    <link rel="stylesheet" href="css/toast.css" />
+    <link rel="stylesheet" href="css/toast.css" /> -->
+    <link rel="stylesheet" th:href="@{/css/navbar.css}">
   </head>
   <body>
-    <aside id="sidebar" class="sidebar"></aside>
-    <nav class="navbar"></nav>
+    <!-- Chèn thanh điều hướng tách rời vào đây -->
+    <div th:replace="~{fragments/navbar :: main-nav}"></div>
 
     <div class="main-container">
       <div class="main-content">
@@ -314,10 +315,39 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="js/toast.js"></script>
+    <!-- <script src="js/toast.js"></script>
     <script src="js/sidebar.js"></script>
     <script src="js/navigation.js"></script>
     <script src="js/flashcard.js"></script>
-    <script src="js/drag_drop_helper.js"></script>
+    <script src="js/drag_drop_helper.js"></script> -->
+    <script th:src="@{/js/navbar.js}"></script>
   </body>
+
+  <script>
+  document.addEventListener('DOMContentLoaded', function() {
+    const btnGeneratePrompt = document.getElementById('btn-generate-prompt');
+    
+    if (btnGeneratePrompt) {
+      btnGeneratePrompt.addEventListener('click', function() {
+        const topicInput = document.getElementById('topic-input');
+        const countInput = document.getElementById('count-input');
+        
+        const topicName = topicInput ? topicInput.value.trim() : '';
+        const count = countInput ? countInput.value : '10';
+
+        if (!topicName) {
+          alert('Vui lòng nhập tên chủ đề tiếng Anh!');
+          return;
+        }
+
+        // Tạo cấu trúc prompt tự động gửi sang trang Chat AI
+        const promptText = `Bạn hãy tạo ${count} cặp thẻ flashcard cho chủ đề: "${topicName}". Trả về dữ liệu JSON thuần dạng mảng [...].`;
+
+        // Chuyển hướng sang trang chat-ai kèm theo prompt trên URL
+        window.location.href = `/chat-ai?prompt=` + encodeURIComponent(promptText);
+      });
+    }
+  });
+</script>
+
 </html>

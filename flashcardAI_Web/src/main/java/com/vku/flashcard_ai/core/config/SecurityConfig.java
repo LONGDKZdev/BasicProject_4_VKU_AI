@@ -12,13 +12,13 @@ import org.springframework.security.web.SecurityFilterChain;
 @EnableWebSecurity
 public class SecurityConfig {
 
-    @Bean
-    SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+        @Bean
+        SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
                 .authorizeHttpRequests(auth -> auth
                         // CHỈ cho phép truy cập tự do các trang này (BỎ dấu "/" ở phần permitAll này đi
                         // nếu có)
-                        .requestMatchers("/login", "/css/**", "/js/**", "/images/**", "/api/**").permitAll()
+                        .requestMatchers("/login", "/css/**", "/js/**", "/", "/chat-ai", "/meet", "/settings").permitAll()
 
                         // TẤT CẢ các request khác (bao gồm cả trang chủ "/") BẮT BUỘC phải đăng nhập
                         .anyRequest().authenticated())
@@ -33,7 +33,7 @@ public class SecurityConfig {
                 .csrf(csrf -> csrf.disable());
 
         return http.build();
-    }
+}
 
 //     @Bean
 //     PasswordEncoder passwordEncoder() {

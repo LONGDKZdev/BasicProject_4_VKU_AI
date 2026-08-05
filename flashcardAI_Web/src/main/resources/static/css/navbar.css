@@ -1,0 +1,170 @@
+/* Tổng thể Navbar với hiệu ứng chuyển màu nhẹ nhàng */
+.custom-navbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 85px;
+    padding: 0 50px;
+    background: linear-gradient(135deg, #ffffff 0%, #fcf8f2 100%);
+    border-bottom: 2px solid #eae2d8;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.04);
+    position: sticky;
+    top: 0;
+    z-index: 1000;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    transition: all 0.3s ease;
+}
+
+/* Khối Logo bên trái có hiệu ứng phóng nhẹ khi hover */
+.nav-logo a {
+    text-decoration: none;
+    font-size: 32px;
+    font-weight: 800;
+    color: #1a1a1a;
+    letter-spacing: -0.5px;
+    transition: transform 0.25s ease, opacity 0.25s ease;
+    display: inline-block;
+}
+.nav-logo a:hover {
+    transform: scale(1.03);
+    opacity: 0.9;
+}
+
+/* Khối Menu giữa căn đều */
+.nav-menu {
+    display: flex;
+    gap: 40px;
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+}
+
+/* Hiệu ứng chuyển động mượt cho các thẻ Item trên menu */
+.nav-item {
+    text-decoration: none;
+    color: #555555;
+    font-weight: 600;
+    font-size: 18px;
+    padding: 8px 18px;
+    border-radius: 12px;
+    position: relative;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Thêm hiệu ứng gạch chân chạy ra (underline animation) khi hover */
+.nav-item::after {
+    content: '';
+    position: absolute;
+    width: 0;
+    height: 2px;
+    bottom: 4px;
+    left: 50%;
+    background-color: #0d6efd;
+    transition: all 0.3s ease;
+    transform: translateX(-50%);
+}
+
+.nav-item:hover {
+    color: #0d6efd;
+    background-color: rgba(13, 110, 253, 0.04);
+}
+
+.nav-item:hover::after {
+    width: 60%;
+}
+
+/* Trạng thái khi tab đang được chọn (Active) với hiệu ứng phát sáng mạnh */
+.nav-item.active {
+    color: #0d6efd !important;
+    background-color: rgba(13, 110, 253, 0.12) !important;
+    font-weight: 700 !important;
+    box-shadow: 0 0 15px rgba(13, 110, 253, 0.5) !important;
+    border: 1px solid rgba(13, 110, 253, 0.3) !important;
+}
+
+.nav-item.active::after {
+    width: 70% !important;
+    box-shadow: 0 0 10px #0d6efd !important;
+}
+
+/* Khối Tài khoản bên phải */
+.nav-account {
+    position: relative;
+    cursor: pointer;
+}
+
+.account-dropdown-toggle {
+    display: flex;
+    align-items: center;
+    color: #333333;
+    padding: 8px;
+    border-radius: 50%;
+    transition: all 0.25s ease;
+}
+
+.account-dropdown-toggle:hover {
+    background-color: #f2eae1;
+    color: #0d6efd;
+    transform: rotate(8deg);
+}
+
+/* Hiệu ứng Dropdown xuất hiện mượt mà (Fade In & Slide Down) */
+.account-dropdown-menu {
+    display: none;
+    position: absolute;
+    right: 0;
+    top: 60px;
+    background: #ffffff;
+    box-shadow: 0px 12px 30px rgba(0, 0, 0, 0.12);
+    border-radius: 14px;
+    width: 190px;
+    padding: 10px 0;
+    z-index: 1100;
+    border: 1px solid #eae2d8;
+    opacity: 0;
+    transform: translateY(-10px);
+    transition: opacity 0.25s ease, transform 0.25s ease;
+}
+
+/* Class 'show' kích hoạt animation trượt xuống */
+.account-dropdown-menu.show {
+    display: block;
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.dropdown-item {
+    display: block;
+    width: 100%;
+    padding: 12px 20px;
+    text-align: left;
+    background: none;
+    border: none;
+    font-size: 15px;
+    font-weight: 500;
+    color: #333333;
+    text-decoration: none;
+    cursor: pointer;
+    transition: background-color 0.2s, padding-left 0.2s;
+}
+
+.dropdown-item:hover {
+    background-color: #f8f4ef;
+    padding-left: 24px; /* Hiệu ứng dịch chữ nhẹ sang phải khi hover */
+    color: #0d6efd;
+}
+
+.dropdown-divider {
+    height: 1px;
+    background-color: #eae2d8;
+    margin: 6px 0;
+}
+
+.logout-btn {
+    color: #e53935;
+    font-weight: 600;
+}
+.logout-btn:hover {
+    background-color: #fff1f0;
+    color: #d32f2f;
+}
