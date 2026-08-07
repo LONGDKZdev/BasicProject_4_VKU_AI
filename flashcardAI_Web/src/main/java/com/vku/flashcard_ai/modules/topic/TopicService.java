@@ -15,11 +15,31 @@ public class TopicService {
 
     private static final String COLLECTION_NAME = "topics";
 
-    // 1. Lấy danh sách chủ đề của user
+    // Hàm phụ trợ: Lấy chuỗi userId ngẫu nhiên từ username đang đăng nhập
+    public String getUserIdByUsername(String username) {
+        try {
+            Firestore db = FirestoreClient.getFirestore();
+            List<QueryDocumentSnapshot> docs = db.collection("users")
+                    .whereEqualTo("username", username)
+                    .get().get().getDocuments();
+            if (!docs.isEmpty()) {
+                String id = docs.get(0).getString("userId");
+                if (id != null && !id.isEmpty()) {
+                    return id;
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return username; // Fallback an toàn nếu không tìm thấy
+    }
+
+    // 1. Lấy danh sách chủ đề của user dựa theo chuỗi userId bảo mật
     public List<Topic> getTopicsByUser(String userId) throws ExecutionException, InterruptedException {
         Firestore db = FirestoreClient.getFirestore();
         ApiFuture<QuerySnapshot> future = db.collection(COLLECTION_NAME)
                 .whereEqualTo("userId", userId)
+                .orderBy("orderIndex", Query.Direction.ASCENDING)
                 .get();
         
         List<QueryDocumentSnapshot> documents = future.get().getDocuments();
@@ -31,7 +51,7 @@ public class TopicService {
         return topics;
     }
 
-    // 2. Thêm hoặc Cập nhật gói chủ đề (Lưu nguyên cục JSON vào dataJson)
+    // 2. Thêm hoặc Cập nhật gói chủ đề
     @SuppressWarnings("null")
     public String saveTopic(Topic topic) throws ExecutionException, InterruptedException {
         Firestore db = FirestoreClient.getFirestore();

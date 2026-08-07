@@ -3,11 +3,13 @@ package com.vku.flashcard_ai.modules.topic;
 public class Topic {
     private String topicId;
     private String userId;
+    private String username;
     private String name;
     private String color;
     private int count;
     private String dataJson; // Lưu toàn bộ mảng JSON từ vựng ở đây
     private long createdAt;
+    private int orderIndex;
 
     public Topic() {}
 
@@ -32,4 +34,10 @@ public class Topic {
 
     public long getCreatedAt() { return createdAt; }
     public void setCreatedAt(long createdAt) { this.createdAt = createdAt; }
+
+    public int getOrderIndex() { return orderIndex; }
+    public void setOrderIndex(int orderIndex) { this.orderIndex = orderIndex; }
+
+    public String getUsername() { return username; }
+    public void setUsername(String username) { this.username = username; }
 }

@@ -3,6 +3,7 @@ package com.vku.flashcard_ai.modules.topic;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.security.Principal;
 import java.util.List;
 
 @RestController
@@ -10,35 +11,67 @@ import java.util.List;
 @CrossOrigin(origins = "*")
 public class TopicController {
 
+    private final TopicService topicService;
 
-    private TopicService topicService;
+    public TopicController(TopicService topicService) {
+        this.topicService = topicService;
+    }
+
+    @GetMapping("/current-user")
+    public ResponseEntity<String> getCurrentUser(Principal principal) {
+        if (principal != null) {
+            return ResponseEntity.ok(principal.getName());
+        }
+        return ResponseEntity.status(401).body("Unauthorized");
+    }
 
     @GetMapping
-    public ResponseEntity<List<Topic>> getTopics(@RequestParam String userId) {
+    public ResponseEntity<List<Topic>> getTopics(Principal principal) {
         try {
-            List<Topic> topics = topicService.getTopicsByUser(userId);
+            if (principal == null) {
+                return ResponseEntity.status(401).build();
+            }
+            String realUserId = topicService.getUserIdByUsername(principal.getName());
+            List<Topic> topics = topicService.getTopicsByUser(realUserId);
             return ResponseEntity.ok(topics);
         } catch (Exception e) {
+            e.printStackTrace();
             return ResponseEntity.internalServerError().build();
         }
     }
 
     @PostMapping
-    public ResponseEntity<String> saveTopic(@RequestBody Topic topic) {
+    public ResponseEntity<String> saveTopic(@RequestBody Topic topic, Principal principal) {
         try {
+            if (principal == null) {
+                return ResponseEntity.status(401).body("Unauthorized");
+            }
+            
+            // Gán cả userId (mã bảo mật) và username (tên hiển thị)
+            String currentUsername = principal.getName();
+            String realUserId = topicService.getUserIdByUsername(currentUsername);
+            
+            topic.setUserId(realUserId);
+            topic.setUsername(currentUsername); // Lưu trực tiếp username vào topic
+
             String result = topicService.saveTopic(topic);
             return ResponseEntity.ok(result);
         } catch (Exception e) {
+            e.printStackTrace();
             return ResponseEntity.internalServerError().body("Error: " + e.getMessage());
         }
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<String> deleteTopic(@PathVariable String id) {
+    public ResponseEntity<String> deleteTopic(@PathVariable String id, Principal principal) {
         try {
+            if (principal == null) {
+                return ResponseEntity.status(401).body("Unauthorized");
+            }
             String result = topicService.deleteTopic(id);
             return ResponseEntity.ok(result);
         } catch (Exception e) {
+            e.printStackTrace();
             return ResponseEntity.internalServerError().body("Error: " + e.getMessage());
         }
     }

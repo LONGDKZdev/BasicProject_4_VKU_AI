@@ -15,14 +15,14 @@ public class AuthService {
     @SuppressWarnings("null")
     public String register(UserAccount user) throws ExecutionException, InterruptedException {
         Firestore db = FirestoreClient.getFirestore();
-        user.setUserId(UUID.randomUUID().toString());
+        String generatedId = UUID.randomUUID().toString();
+        user.setUserId(generatedId); // Gán chuỗi ID ngẫu nhiên làm userId bảo mật
         user.setCreatedAt(System.currentTimeMillis());
-        // Mặc định gán avatar mẫu nếu chưa chọn
         if (user.getAvatarKey() == null) {
             user.setAvatarKey("avatar_1");
         }
 
-        db.collection(COLLECTION_NAME).document(user.getUserId()).set(user);
+        db.collection(COLLECTION_NAME).document(generatedId).set(user);
         return "User registered successfully!";
     }
 }
