@@ -204,3 +204,18 @@
     cursor: pointer;
     font-size: 18px;
 }
+
+/* Đảm bảo khung tin nhắn không bị tràn, tự động xuống dòng */
+.message {
+    max-width: 75%;
+    word-break: break-word;
+    overflow-wrap: break-word;
+    white-space: pre-wrap;
+}
+
+/* Giới hạn chiều rộng textarea, không bị kéo dãn vô cực */
+.chat-textarea {
+    width: 100%;
+    max-width: 100%;
+    resize: none; /* Khóa không cho kéo giãn thủ công làm vỡ giao diện */
+}

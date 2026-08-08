@@ -129,32 +129,44 @@
       if (els.btnCopyEditPrompt) {
         els.btnCopyEditPrompt.addEventListener("click", function () {
           const topicName = els.editTopicName.value.trim() || "Chủ đề mới";
-          const promptText = `Bạn hãy tạo 10 cặp thẻ flashcard cho chủ đề: "${topicName}".
+          
+          // Mở Popup lựa chọn chế độ chat thay vì chuyển hướng trực tiếp
+          const choiceModalEl = document.getElementById('chatChoiceModal');
+          if (choiceModalEl) {
+            const choiceModal = new bootstrap.Modal(choiceModalEl);
+            choiceModal.show();
+          } else {
+            // Fallback an toàn nếu chưa chèn modal vào html
+            redirectToChat(topicName, 'new');
+            return;
+          }
 
-Mỗi thẻ phải có cấu trúc dữ liệu sau:
-englishVocabulary: Từ vựng tiếng Anh
-vietnameseVocabulary: Từ vựng tiếng Việt
-example: Câu ví dụ chứa từ vựng bằng tiếng Anh và câu dịch tiếng Việt
-pronunciation: Phiên âm quốc tế IPA (Ví dụ: /ˈbjuːtɪfl/)
-wordPos: Loại từ chính của từ vựng đó (Ví dụ: (n), (v), (adj), (adv))
+          // Xử lý nút Tạo đoạn chat mới (mode=new)
+          const btnCreateNew = document.getElementById("btn-create-new-chat");
+          if (btnCreateNew) {
+            btnCreateNew.onclick = function() {
+              redirectToChat(topicName, 'new');
+            };
+          }
 
-YÊU CẦU BẮT BUỘC: 
-1. Trả về DỮ LIỆU JSON THUẦN. Tuyệt đối KHÔNG viết thêm bất kỳ lời giải thích nào ngoài khối JSON.
-2. ĐA DẠNG LOẠI TỪ: Phân bổ đồng đều giữa Danh từ (n), Động từ (v), Tính từ (adj) và Trạng từ (adv).
-
-Định dạng mẫu:
-[
-  {
-    "englishVocabulary": "Beautiful",
-    "vietnameseVocabulary": "Xinh đẹp",
-    "example": "She has a beautiful smile. Dịch: Cô ấy có nụ cười xinh đẹp.",
-    "pronunciation": "/ˈbjuːtɪfl/",
-    "wordPos": "(adj)"
-  }
-]`;
-
-          window.location.href = `/chat-ai?prompt=` + encodeURIComponent(promptText);
+          // Xử lý nút Tiếp tục đoạn chat trước đó (mode=continue)
+          const btnContinue = document.getElementById("btn-continue-chat");
+          if (btnContinue) {
+            btnContinue.onclick = function() {
+              redirectToChat(topicName, 'continue');
+            };
+          }
         });
+      }
+
+      function redirectToChat(topicName, mode) {
+        const promptText = `Bạn hãy tạo 10 cặp thẻ flashcard cho chủ đề: "${topicName}".\n\nMỗi thẻ phải có cấu trúc dữ liệu sau:\nenglishVocabulary: Từ vựng tiếng Anh\nvietnameseVocabulary: Từ vựng tiếng Việt\nexample: Câu ví dụ chứa từ vựng bằng tiếng Anh và câu dịch tiếng Việt\npronunciation: Phiên âm quốc tế IPA (Ví dụ: /ˈbjuːtɪfl/)\nwordPos: Loại từ chính của từ vựng đó (Ví dụ: (n), (v), (adj), (adv))\n\nYÊU CẦU BẮT BUỘC: \n1. Trả về DỮ LIỆU JSON THUẦN. Tuyệt đối KHÔNG viết thêm bất kỳ lời giải thích nào ngoài khối JSON.\n2. ĐA DẠNG LOẠI TỪ: Phân bổ đồng đều giữa Danh từ (n), Động từ (v), Tính từ (adj) và Trạng từ (adv).\n\nĐịnh dạng mẫu:\n[\n  {\n    "englishVocabulary": "Beautiful",\n    "vietnameseVocabulary": "Xinh đẹp",\n    "example": "She has a beautiful smile. Dịch: Cô ấy có nụ cười xinh đẹp.",\n    "pronunciation": "/ˈbjuːtɪfl/",\n    "wordPos": "(adj)"\n  }\n]`;
+
+        if (mode === 'new') {
+          window.location.href = `/chat-ai?prompt=` + encodeURIComponent(promptText) + `&topic=` + encodeURIComponent(topicName) + `&mode=new`;
+        } else {
+          window.location.href = `/chat-ai?topic=` + encodeURIComponent(topicName) + `&mode=continue`;
+        }
       }
 
       els.btnSaveEdit.addEventListener("click", function () {
@@ -175,7 +187,6 @@ YÊU CẦU BẮT BUỘC:
         const col = document.createElement("div");
         const colorVars = getColorVariants(topic.color);
         
-        // Kiểm tra tính hợp lệ của JSON từ vựng
         let parsedData = [];
         let isValidData = false;
         try { 
@@ -272,7 +283,7 @@ YÊU CẦU BẮT BUỘC:
       const updatedTopic = {
         topicId: currentTopicId,
         name: name,
-        color: selectedColor, // Đã lấy đúng màu sắc đang được chọn từ color picker
+        color: selectedColor,
         dataJson: dataJson,
         orderIndex: existingTopic ? existingTopic.orderIndex : 0
       };

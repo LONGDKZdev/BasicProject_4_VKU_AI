@@ -1,16 +1,18 @@
 <!doctype html>
 <html lang="vi" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Chat AI & Machine Learning - Study Space</title>
-    
+
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
     <link href="https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css" rel="stylesheet" />
-    
+
     <link rel="stylesheet" th:href="@{/css/navbar.css}">
     <link rel="stylesheet" th:href="@{/css/chat-ai.css}">
 </head>
+
 <body>
     <div th:replace="~{fragments/navbar :: main-nav}"></div>
 
@@ -37,7 +39,8 @@
         <div class="chat-main">
             <!-- Màn hình chào mừng kiểu Gemini (hiện khi chưa có tin nhắn hoặc ở đoạn chat mới) -->
             <div class="welcome-screen" id="welcomeScreen">
-                <h2 class="fw-normal text-dark">Chào <span th:text="${#authentication.name}">Long</span>, tôi có thể giúp gì cho bạn?</h2>
+                <h2 class="fw-normal text-dark">Chào <span th:text="${#authentication.name}">Long</span>, tôi có thể
+                    giúp gì cho bạn?</h2>
             </div>
 
             <div class="chat-messages d-none" id="chatMessages"></div>
@@ -45,15 +48,16 @@
             <!-- Ô nhập liệu và tuỳ chọn -->
             <div class="chat-input-area">
                 <div class="input-box-wrapper">
-                    <textarea class="chat-textarea" id="chatInput" rows="1" placeholder="Hỏi Gemini hoặc dán JSON cập nhật từ vựng..."></textarea>
+                    <textarea class="chat-textarea" id="chatInput" rows="1"
+                        placeholder="Hỏi Gemini hoặc dán JSON cập nhật từ vựng..."></textarea>
                     <div class="chat-bottom-bar">
                         <select class="model-select" id="modelSelect">
-                            <option value="gemini">✨ Gemini 3.6 Flash</option>
-                            <option value="ai-personal">🧠 AI Personal (Custom ML)</option>
-                            <option value="pro">🚀 Gemini 3.1 Pro</option>
+                            <option value="gemini">🤖 Chat bot</option>
+                            <option value="ai-personal">🧠 Chat bot Personal</option>
                         </select>
                         <div class="send-action-group">
-                            <button class="json-btn" title="Dán dữ liệu JSON"><i class="bx bx-code-alt"></i> JSON</button>
+                            <button class="json-btn" title="Dán dữ liệu JSON"><i class="bx bx-code-alt"></i>
+                                JSON</button>
                             <button class="send-btn" id="sendBtn"><i class="bx bx-up-arrow-alt"></i></button>
                         </div>
                     </div>
@@ -66,4 +70,5 @@
     <script th:src="@{/js/navbar.js}"></script>
     <script th:src="@{/js/chat-ai.js}"></script>
 </body>
+
 </html>
