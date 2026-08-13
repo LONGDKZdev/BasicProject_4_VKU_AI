@@ -92,7 +92,7 @@
           </div>
           <button type="button" id="btn-generate-prompt" class="btn btn-primary w-100 rounded-pill fw-bold py-2"
             data-bs-dismiss="modal">
-            <i class="bx bx-save me-1"></i>Lưu chủ đề & Copy Prompt
+            <i class="bx bx-save me-1"></i>Tạo chủ đề mới 
           </button>
         </div>
       </div>
@@ -117,7 +117,7 @@
               lượng từ bạn muốn học.
             </li>
             <li class="mb-2">
-              Ấn <strong>Lưu chủ đề & Copy Prompt</strong> để nhận cấu trúc
+              Ấn <strong>Tạo chủ đề mới</strong> để nhận cấu trúc
               prompt tối ưu nhất gửi cho AI (ChatGPT/Claude).
             </li>
             <li class="mb-2">
@@ -154,7 +154,7 @@
               <button type="button" id="btn-copy-edit-prompt"
                 class="btn btn-sm btn-outline-primary rounded-pill d-flex align-items-center py-1 px-2"
                 style="font-size: 12px">
-                <i class="bx bx-copy me-1"></i> Sao chép prompt
+                <i class="bx bx-copy me-1"></i> chỉnh sửa prompt
               </button>
             </div>
             <input type="text" id="edit-topic-name" class="form-control bg-light border-0" />
@@ -246,95 +246,6 @@
   <script th:src="@{/js/flashcard.js}"></script>
   <script th:src="@{/js/drag_drop_helper.js}"></script>
   <script th:src="@{/js/navbar.js}"></script>
-
-  <!-- <script>
-    document.addEventListener('DOMContentLoaded', function () {
-      const btnGeneratePrompt = document.getElementById('btn-generate-prompt');
-      const btnCopyEditPrompt = document.getElementById('btn-copy-edit-prompt');
-
-      // 1. Logic khi bấm "Lưu chủ đề" ở Modal thêm mới (Chỉ tạo chủ đề trực tiếp, chưa gọi AI)
-      if (btnGeneratePrompt) {
-        btnGeneratePrompt.addEventListener('click', function () {
-          const topicInput = document.getElementById('topic-input');
-          const countInput = document.getElementById('count-input');
-
-          const topicName = topicInput ? topicInput.value.trim() : '';
-          const count = countInput ? countInput.value : '10';
-
-          if (!topicName) {
-            alert('Vui lòng nhập tên chủ đề tiếng Anh!');
-            return;
-          }
-
-          // Gọi API tạo chủ đề trực tiếp lên server/Firebase với dataJson rỗng hoặc mảng trống []
-          const currentUserId = "[[${#authentication.name}]]"; // Lấy userId từ Spring Security
-          const newTopic = {
-            userId: currentUserId,
-            name: topicName,
-            color: "#4ade80",
-            count: parseInt(count, 10),
-            dataJson: "[]"
-          };
-
-          fetch("http://localhost:8080/api/topics", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(newTopic)
-          })
-            .then(res => {
-              if (res.ok) {
-                // Đóng modal và tải lại danh sách
-                const modalEl = document.getElementById('addTopicModal');
-                const modal = bootstrap.Modal.getInstance(modalEl);
-                if (modal) modal.hide();
-
-                topicInput.value = "";
-                window.location.reload(); // Hoặc gọi hàm load lại danh sách
-              } else {
-                alert("Lỗi khi tạo chủ đề!");
-              }
-            })
-            .catch(err => console.error("Lỗi:", err));
-        });
-      }
-
-      // 2. Logic khi bấm "Sao chép prompt" bên trong Modal Chỉnh sửa chủ đề
-      if (btnCopyEditPrompt) {
-        btnCopyEditPrompt.addEventListener('click', function () {
-          const editTopicNameInput = document.getElementById('edit-topic-name');
-          const topicName = editTopicNameInput ? editTopicNameInput.value.trim() : 'Chủ đề mới';
-
-          const promptText = `Bạn hãy tạo 10 cặp thẻ flashcard cho chủ đề: "${topicName}".
-
-Mỗi thẻ phải có cấu trúc dữ liệu sau:
-englishVocabulary: Từ vựng tiếng Anh
-vietnameseVocabulary: Từ vựng tiếng Việt
-example: Câu ví dụ chứa từ vựng bằng tiếng Anh và câu dịch tiếng Việt
-pronunciation: Phiên âm quốc tế IPA (Ví dụ: /ˈbjuːtɪfl/)
-wordPos: Loại từ chính của từ vựng đó (Ví dụ: (n), (v), (adj), (adv))
-
-YÊU CẦU BẮT BUỘC: 
-1. Trả về DỮ LIỆU JSON THUẦN. Tuyệt đối KHÔNG viết thêm bất kỳ lời giải thích nào ngoài khối JSON.
-2. ĐA DẠNG LOẠI TỪ: Phân bổ đồng đều giữa Danh từ (n), Động từ (v), Tính từ (adj) và Trạng từ (adv).
-
-Định dạng mẫu:
-[
-  {
-    "englishVocabulary": "Beautiful",
-    "vietnameseVocabulary": "Xinh đẹp",
-    "example": "She has a beautiful smile. Dịch: Cô ấy có nụ cười xinh đẹp.",
-    "pronunciation": "/ˈbjuːtɪfl/",
-    "wordPos": "(adj)"
-  }
-]`;
-
-          // Chuyển hướng sang trang Chat AI kèm theo prompt
-          window.location.href = `/chat-ai?prompt=` + encodeURIComponent(promptText);
-        });
-      }
-    });
-  </script> -->
-
 
 
 </html>

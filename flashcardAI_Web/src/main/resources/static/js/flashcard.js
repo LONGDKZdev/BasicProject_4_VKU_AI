@@ -95,7 +95,7 @@
         const count = parseInt(els.countInput.value, 10) || 10;
 
         if (!topicName) {
-          alert("Vui lòng nhập tên chủ đề tiếng Anh!");
+          if (window.showToast) showToast("Vui lòng nhập tên chủ đề tiếng Anh!", "warning");
           return;
         }
 
@@ -119,8 +119,9 @@
             const modalEl = document.getElementById('addTopicModal');
             const modal = bootstrap.Modal.getInstance(modalEl);
             if (modal) modal.hide();
+            if (window.showToast) showToast("Đã tạo chủ đề mới thành công!", "success");
           } else {
-            alert("Lỗi khi tạo chủ đề!");
+            if (window.showToast) showToast("Lỗi khi tạo chủ đề!", "danger");
           }
         })
         .catch(err => console.error("Lỗi:", err));
@@ -130,42 +131,57 @@
         els.btnCopyEditPrompt.addEventListener("click", function () {
           const topicName = els.editTopicName.value.trim() || "Chủ đề mới";
           
-          // Mở Popup lựa chọn chế độ chat thay vì chuyển hướng trực tiếp
-          const choiceModalEl = document.getElementById('chatChoiceModal');
-          if (choiceModalEl) {
-            const choiceModal = new bootstrap.Modal(choiceModalEl);
-            choiceModal.show();
-          } else {
-            // Fallback an toàn nếu chưa chèn modal vào html
-            redirectToChat(topicName, 'new');
-            return;
-          }
+          fetch('/api/ai/chat/histories')
+            .then(res => res.json())
+            .then(histories => {
+              const btnContinue = document.getElementById("btn-continue-chat");
+              
+              // Kiểm tra xem đã có lịch sử chat nào thuộc topicId này chưa
+              const hasHistory = histories && histories.some(h => h.topicId === currentTopicId);
+              
+              if (btnContinue) {
+                if (hasHistory) {
+                  btnContinue.disabled = false;
+                  btnContinue.classList.remove("disabled", "opacity-50");
+                } else {
+                  btnContinue.disabled = true;
+                  btnContinue.classList.add("disabled", "opacity-50");
+                }
+              }
 
-          // Xử lý nút Tạo đoạn chat mới (mode=new)
+              const choiceModalEl = document.getElementById('chatChoiceModal');
+              if (choiceModalEl) {
+                const choiceModal = new bootstrap.Modal(choiceModalEl);
+                choiceModal.show();
+              }
+            })
+            .catch(() => {
+              redirectToChat(topicName, currentTopicId, 'new');
+            });
+
           const btnCreateNew = document.getElementById("btn-create-new-chat");
           if (btnCreateNew) {
             btnCreateNew.onclick = function() {
-              redirectToChat(topicName, 'new');
+              redirectToChat(topicName, currentTopicId, 'new');
             };
           }
 
-          // Xử lý nút Tiếp tục đoạn chat trước đó (mode=continue)
           const btnContinue = document.getElementById("btn-continue-chat");
           if (btnContinue) {
             btnContinue.onclick = function() {
-              redirectToChat(topicName, 'continue');
+              redirectToChat(topicName, currentTopicId, 'continue');
             };
           }
         });
       }
 
-      function redirectToChat(topicName, mode) {
-        const promptText = `Bạn hãy tạo 10 cặp thẻ flashcard cho chủ đề: "${topicName}".\n\nMỗi thẻ phải có cấu trúc dữ liệu sau:\nenglishVocabulary: Từ vựng tiếng Anh\nvietnameseVocabulary: Từ vựng tiếng Việt\nexample: Câu ví dụ chứa từ vựng bằng tiếng Anh và câu dịch tiếng Việt\npronunciation: Phiên âm quốc tế IPA (Ví dụ: /ˈbjuːtɪfl/)\nwordPos: Loại từ chính của từ vựng đó (Ví dụ: (n), (v), (adj), (adv))\n\nYÊU CẦU BẮT BUỘC: \n1. Trả về DỮ LIỆU JSON THUẦN. Tuyệt đối KHÔNG viết thêm bất kỳ lời giải thích nào ngoài khối JSON.\n2. ĐA DẠNG LOẠI TỪ: Phân bổ đồng đều giữa Danh từ (n), Động từ (v), Tính từ (adj) và Trạng từ (adv).\n\nĐịnh dạng mẫu:\n[\n  {\n    "englishVocabulary": "Beautiful",\n    "vietnameseVocabulary": "Xinh đẹp",\n    "example": "She has a beautiful smile. Dịch: Cô ấy có nụ cười xinh đẹp.",\n    "pronunciation": "/ˈbjuːtɪfl/",\n    "wordPos": "(adj)"\n  }\n]`;
-
+      function redirectToChat(topicName, topicId, mode) {
+        const promptText = `Bạn hãy tạo 10 cặp thẻ flashcard cho chủ đề: "${topicName}".\n\nMỗi thẻ có cấu trúc JSON:\n{\n  "englishVocabulary": "Beautiful",\n  "vietnameseVocabulary": "Xinh đẹp",\n  "example": "She has a beautiful smile. Dịch: Cô ấy có nụ cười xinh đẹp.",\n  "pronunciation": "/ˈbjuːtɪfl/",\n  "wordPos": "(adj)"\n}\n\nYÊU CẦU BẮT BUỘC:\n1. Chỉ trả về CÁC OBJECT NGOẶC NHỌN {...} ngăn cách bằng dấu phẩy. KHÔNG bọc ngoặc vuông [...] ở ngoài.\n2. Phân bổ đồng đều loại từ (n), (v), (adj), (adv).`;
+        
         if (mode === 'new') {
-          window.location.href = `/chat-ai?prompt=` + encodeURIComponent(promptText) + `&topic=` + encodeURIComponent(topicName) + `&mode=new`;
+          window.location.href = `/chat-ai?prompt=` + encodeURIComponent(promptText) + `&topic=` + encodeURIComponent(topicName) + `&topicId=` + encodeURIComponent(topicId || '') + `&mode=new`;
         } else {
-          window.location.href = `/chat-ai?topic=` + encodeURIComponent(topicName) + `&mode=continue`;
+          window.location.href = `/chat-ai?topic=` + encodeURIComponent(topicName) + `&topicId=` + encodeURIComponent(topicId || '') + `&mode=continue`;
         }
       }
 
@@ -224,7 +240,13 @@
         col.querySelector(".btn-edit").addEventListener("click", function () {
           currentTopicId = topic.topicId;
           els.editTopicName.value = topic.name;
-          els.editTopicData.value = topic.dataJson || "[]";
+          
+          // Loại bỏ ngoặc [ ] ngoài cùng để giao diện chỉ hiển thị danh sách khối nhọn {...}
+          let displayData = (topic.dataJson || "").trim();
+          if (displayData.startsWith("[")) displayData = displayData.substring(1).trim();
+          if (displayData.endsWith("]")) displayData = displayData.substring(0, displayData.length - 1).trim();
+
+          els.editTopicData.value = displayData;
           selectedColor = topic.color || COLORS[0];
           
           els.colorPickerContainer.querySelectorAll(".color-option").forEach((n) => {
@@ -276,7 +298,45 @@
     function handleSaveEdit(els) {
       if (!currentTopicId) return;
       const name = els.editTopicName.value.trim();
-      const dataJson = els.editTopicData.value.trim();
+      let rawInput = els.editTopicData.value.trim();
+
+      if (!name) {
+        if (window.showToast) showToast("Vui lòng nhập tên chủ đề!", "warning");
+        else alert("Vui lòng nhập tên chủ đề!");
+        return;
+      }
+
+      if (rawInput) {
+        // 1. Dọn dẹp ký tự Markdown rác
+        rawInput = rawInput.replaceAll("```json", "").replaceAll("```", "").trim();
+
+        // 2. Bỏ ngoặc vuông ngoài cùng nếu người dùng cố tình dán cả mảng [ ... ]
+        if (rawInput.startsWith("[")) rawInput = rawInput.substring(1).trim();
+        if (rawInput.endsWith("]")) rawInput = rawInput.substring(0, rawInput.length - 1).trim();
+
+        // 3. TỰ ĐỘNG SỬA LỖI: Thêm dấu phẩy giữa các khối ngoặc nhọn } { nếu người dùng gõ thiếu
+        rawInput = rawInput.replace(/}\s*\{/g, "},{");
+
+        // 4. Bọc lại thành mảng JSON hoàn chỉnh
+        rawInput = "[" + rawInput + "]";
+
+        // 5. KIỂM TRA CÚ PHÁP (VALIDATE)
+        try {
+          const parsedArr = JSON.parse(rawInput);
+          if (!Array.isArray(parsedArr)) {
+            throw new Error("Dữ liệu không phải mảng danh sách từ vựng!");
+          }
+        } catch (e) {
+          if (window.showToast) {
+            showToast("Dữ liệu JSON bị sai cú pháp! Hãy kiểm tra lại các dấu ngoặc nhọn hoặc ngoặc kép.", "danger");
+          } else {
+            alert("Dữ liệu JSON bị sai cú pháp! Hãy kiểm tra lại các dấu ngoặc nhọn hoặc ngoặc kép.");
+          }
+          return; // DỪNG LƯU NGAY LẬP TỨC NẾU CÚ PHÁP LỖI
+        }
+      } else {
+        rawInput = "[]";
+      }
 
       const existingTopic = topics.find(t => t.topicId === currentTopicId);
 
@@ -284,7 +344,7 @@
         topicId: currentTopicId,
         name: name,
         color: selectedColor,
-        dataJson: dataJson,
+        dataJson: rawInput,
         orderIndex: existingTopic ? existingTopic.orderIndex : 0
       };
 
@@ -297,9 +357,10 @@
         if (res.ok) {
           els.editTopicModal.hide();
           loadTopicsFromServer();
-          if (window.showToast) showToast("Đã lưu thay đổi chủ đề!", "success");
+          if (window.showToast) showToast("Đã lưu thay đổi chủ đề thành công!", "success");
         } else {
-          alert("Lỗi khi lưu chủ đề!");
+          if (window.showToast) showToast("Lỗi từ máy chủ khi lưu chủ đề!", "danger");
+          else alert("Lỗi khi lưu chủ đề!");
         }
       })
       .catch(err => console.error("Lỗi:", err));

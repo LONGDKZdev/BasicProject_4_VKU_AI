@@ -28,37 +28,91 @@ public class AiService {
         return String.format(
             "Bạn hãy tạo %d cặp thẻ flashcard cho chủ đề: \"%s\".\n" +
             "Mỗi thẻ phải có cấu trúc dữ liệu JSON:\n" +
-            "englishVocabulary: Từ vựng tiếng Anh\n" +
-            "vietnameseVocabulary: Từ vựng tiếng Việt\n" +
-            "example: Câu ví dụ chứa từ vựng bằng tiếng Anh và câu dịch tiếng Việt\n" +
-            "pronunciation: Phiên âm quốc tế IPA (Ví dụ: /ˈbjuːtɪfl/)\n" +
-            "wordPos: Loại từ chính của từ vựng đó (Ví dụ: (n), (v), (adj), (adv))\n\n" +
+            "{\n" +
+            "  \"englishVocabulary\": \"Từ vựng tiếng Anh\",\n" +
+            "  \"vietnameseVocabulary\": \"Từ vựng tiếng Việt\",\n" +
+            "  \"example\": \"Câu ví dụ tiếng Anh. Dịch: Câu dịch tiếng Việt\",\n" +
+            "  \"pronunciation\": \"Phiên âm quốc tế IPA\",\n" +
+            "  \"wordPos\": \"Loại từ chính (n), (v), (adj), (adv)\"\n" +
+            "}\n\n" +
             "YÊU CẦU BẮT BUỘC:\n" +
-            "1. Trả về DỮ LIỆU JSON THUẦN (dạng mảng [...]). Tuyệt đối KHÔNG viết thêm lời giải thích nào ngoài khối JSON.\n" +
-            "2. ĐA DẠNG LOẠI TỪ: Phân bổ đồng đều giữa (n), (v), (adj), (adv).",
+            "1. Chỉ trả về CÁC OBJECT NGOẶC NHỌN {...} ngăn cách bằng dấu phẩy. TUYỆT ĐỐI KHÔNG bọc mảng ngoặc vuông [...] ở ngoài cùng.\n" +
+            "2. Tuyệt đối KHÔNG viết thêm bất kỳ lời giải thích hay ký tự Markdown nào ngoài các khối JSON.",
             count, topicName
         );
     }
 
-    // 1. Xử lý gọi Google Gemini API thực tế qua Key
+    // 1. Phương thức gọi Gemini mặc định
     public String callAiModel(String prompt) {
+        return callAiModelWithHistory(prompt, "[]");
+    }
+
+    // 2. Gọi Gemini API kèm theo Memory lịch sử trò chuyện bằng Java thuần
+    public String callAiModelWithHistory(String prompt, String messagesJson) {
         String activeKey = getCurrentApiKey();
         if (activeKey.equals("DEFAULT_KEY")) {
-            return "[{\"englishVocabulary\": \"Example\", \"vietnameseVocabulary\": \"Ví dụ (Chưa cấu hình API Key)\", \"example\": \"This is a test. Dịch: Đây là bài kiểm tra.\", \"pronunciation\": \"/ɪɡˈzæmpəl/\", \"wordPos\": \"(n)\"}]";
+            return "{\"englishVocabulary\": \"Example\", \"vietnameseVocabulary\": \"Ví dụ (Chưa cấu hình API Key)\", \"example\": \"This is a test. Dịch: Đây là bài kiểm tra.\", \"pronunciation\": \"/ɪɡˈzæmpəl/\", \"wordPos\": \"(n)\"}";
         }
 
         try {
-            // Sử dụng model mới và endpoint chuẩn
             String url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent";
             
             RestTemplate restTemplate = new RestTemplate();
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_JSON);
-            
-            // Đưa API Key vào Header dưới dạng x-goog-api-key để tương thích hoàn toàn với key định dạng AQ. mới
             headers.set("x-goog-api-key", activeKey);
 
-            String requestBody = "{\"contents\":[{\"parts\":[{\"text\":" + escapeJson(prompt) + "}]}]}";
+            StringBuilder contentsJson = new StringBuilder("[");
+
+            // Xử lý trích xuất mảng tin nhắn bằng chuỗi thuần Java
+            if (messagesJson != null && !messagesJson.equals("[]") && !messagesJson.trim().isEmpty()) {
+                try {
+                    String[] items = messagesJson.substring(1, messagesJson.length() - 1).split("(?<=\\}),\\s*(?=\\{)");
+                    int startIdx = Math.max(0, items.length - 8); // Lấy tối đa 8 câu gần nhất
+
+                    for (int i = startIdx; i < items.length; i++) {
+                        String item = items[i].trim();
+                        if (item.isEmpty()) continue;
+
+                        String sender = "user";
+                        if (item.contains("\"sender\":\"ai\"") || item.contains("\"sender\": \"ai\"")) {
+                            sender = "model";
+                        }
+
+                        int contentIndex = item.indexOf("\"content\":");
+                        if (contentIndex != -1) {
+                            int startQuote = item.indexOf("\"", contentIndex + 10);
+                            if (startQuote != -1) {
+                                int endQuote = startQuote + 1;
+                                boolean escaped = false;
+                                while (endQuote < item.length()) {
+                                    char c = item.charAt(endQuote);
+                                    if (c == '\\' && !escaped) {
+                                        escaped = true;
+                                    } else if (c == '"' && !escaped) {
+                                        break;
+                                    } else {
+                                        escaped = false;
+                                    }
+                                    endQuote++;
+                                }
+
+                                if (endQuote < item.length()) {
+                                    String contentText = item.substring(startQuote + 1, endQuote);
+                                    contentsJson.append("{\"role\":\"").append(sender)
+                                                .append("\",\"parts\":[{\"text\":\"").append(contentText).append("\"}]},");
+                                }
+                            }
+                        }
+                    }
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+            }
+
+            contentsJson.append("{\"role\":\"user\",\"parts\":[{\"text\":" + escapeJson(prompt) + "}]}]");
+
+            String requestBody = "{\"contents\":" + contentsJson.toString() + "}";
 
             HttpEntity<String> entity = new HttpEntity<>(requestBody, headers);
             ResponseEntity<String> response = restTemplate.postForEntity(url, entity, String.class);
@@ -71,12 +125,10 @@ public class AiService {
             return "Lỗi khi gọi Gemini API: " + e.getMessage();
         }
 
-        return "[]";
+        return "{}";
     }
 
-    // 2. Thêm phương thức cho AI Personal (Custom ML / Logic tự thiết kế)
     public String callCustomMachineLearningModel(String prompt) {
-        // Nơi bạn tự viết thuật toán xử lý riêng, phân tích cú pháp hoặc gọi mô hình nội bộ
         return "🧠 [AI Personal Custom ML]: Đã tiếp nhận yêu cầu và xử lý thành công qua thuật toán tự thiết kế!";
     }
 
@@ -86,14 +138,12 @@ public class AiService {
 
     private String extractTextFromGeminiResponse(String json) {
         try {
-            // Sử dụng tìm kiếm thông minh thay vì cắt cứng chuỗi kết thúc
             int textIndex = json.indexOf("\"text\": \"");
             if (textIndex != -1) {
                 int startIndex = textIndex + 9;
                 int endIndex = startIndex;
                 boolean escaped = false;
                 
-                // Vòng lặp tìm chính xác ký tự kết thúc chuỗi text (bỏ qua các dấu ngoặc kép được escape)
                 while (endIndex < json.length()) {
                     char c = json.charAt(endIndex);
                     if (c == '\\' && !escaped) {

@@ -5,6 +5,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.security.Principal;
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/topics")
@@ -73,6 +74,23 @@ public class TopicController {
         } catch (Exception e) {
             e.printStackTrace();
             return ResponseEntity.internalServerError().body("Error: " + e.getMessage());
+        }
+    }
+    @PostMapping("/append-json")
+    public ResponseEntity<String> appendJsonToTopic(@RequestBody Map<String, String> request) {
+        try {
+            String topicId = request.get("topicId");
+            String newJson = request.get("json");
+
+            if (topicId == null || newJson == null) {
+                return ResponseEntity.badRequest().body("Thiếu thông tin topicId hoặc json");
+            }
+
+            // Gọi service và nhận câu thông báo kết quả chi tiết
+            String resultMessage = topicService.appendJsonToTopic(topicId, newJson);
+            return ResponseEntity.ok(resultMessage);
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError().body("Lỗi: " + e.getMessage());
         }
     }
 }

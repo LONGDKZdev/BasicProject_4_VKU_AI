@@ -16,7 +16,6 @@ public class AiController {
     private final AiService aiService;
     private final ChatHistoryService chatHistoryService;
 
-    // Inject cả AiService và ChatHistoryService vào constructor
     public AiController(AiService aiService, ChatHistoryService chatHistoryService) {
         this.aiService = aiService;
         this.chatHistoryService = chatHistoryService;
@@ -38,27 +37,34 @@ public class AiController {
         try {
             String message = request.get("message");
             String modelType = request.get("modelType");
-            String chatId = request.get("chatId"); // Nhận ID phiên chat hiện tại nếu có
+            String chatId = request.get("chatId");
+            String username = (principal != null) ? principal.getName() : "anonymous";
+
+            if (chatId == null || chatId.trim().isEmpty() || chatId.endsWith("-origin")) {
+                AiChatHistory newSession = chatHistoryService.createNewChatSession(username, "Đoạn chat mới", null, "GENERAL");
+                chatId = newSession.getChatId();
+            }
+
+            String historyMessagesJson = chatHistoryService.getMessagesJsonByChatId(chatId);
 
             String aiReply = "";
             if ("ai-personal".equals(modelType)) {
                 aiReply = aiService.callCustomMachineLearningModel(message);
             } else {
-                aiReply = aiService.callAiModel(message);
+                aiReply = aiService.callAiModelWithHistory(message, historyMessagesJson);
             }
 
-            // Lưu hoặc cập nhật tin nhắn vào Database nếu có chatId
-            if (chatId != null && !chatId.isEmpty() && principal != null) {
-                chatHistoryService.saveMessageToSession(chatId, message, aiReply);
-            }
+            // TRUYỀN ĐỦ 4 THAM SỐ CHO CẢ USER LẪN AI
+            chatHistoryService.saveMessageToSession(chatId, "user", message, null);
+            chatHistoryService.saveMessageToSession(chatId, "ai", aiReply, modelType);
 
-            return ResponseEntity.ok(Map.of("reply", aiReply));
+            return ResponseEntity.ok(Map.of("reply", aiReply, "chatId", chatId));
         } catch (Exception e) {
+            e.printStackTrace();
             return ResponseEntity.internalServerError().body(Map.of("reply", "Lỗi xử lý AI: " + e.getMessage()));
         }
     }
 
-    // Endpoint lấy danh sách lịch sử chat của user hiện tại
     @GetMapping("/chat/histories")
     public ResponseEntity<List<AiChatHistory>> getChatHistories(Principal principal) {
         try {
@@ -72,17 +78,42 @@ public class AiController {
             return ResponseEntity.internalServerError().build();
         }
     }
+
     @PostMapping("/chat/create")
     public ResponseEntity<AiChatHistory> createChatSession(@RequestBody Map<String, String> request, Principal principal) {
         try {
             if (principal == null) return ResponseEntity.status(401).build();
             String title = request.getOrDefault("title", "Đoạn chat mới");
             String topicId = request.get("topicId");
-            
-            AiChatHistory session = chatHistoryService.createNewChatSession(principal.getName(), title, topicId);
+            String chatType = request.getOrDefault("chatType", "GENERAL");
+
+            AiChatHistory session = chatHistoryService.createNewChatSession(principal.getName(), title, topicId, chatType);
             return ResponseEntity.ok(session);
         } catch (Exception e) {
+            e.printStackTrace();
             return ResponseEntity.internalServerError().build();
+        }
+    }
+
+    @PutMapping("/chat/rename")
+    public ResponseEntity<String> renameChatSession(@RequestBody Map<String, String> request) {
+        try {
+            String chatId = request.get("chatId");
+            String newTitle = request.get("title");
+            chatHistoryService.renameChatSession(chatId, newTitle);
+            return ResponseEntity.ok("Success");
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError().body("Error");
+        }
+    }
+
+    @DeleteMapping("/chat/{chatId}")
+    public ResponseEntity<String> deleteChatSession(@PathVariable String chatId) {
+        try {
+            chatHistoryService.deleteChatSession(chatId);
+            return ResponseEntity.ok("Success");
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError().body("Error");
         }
     }
 }

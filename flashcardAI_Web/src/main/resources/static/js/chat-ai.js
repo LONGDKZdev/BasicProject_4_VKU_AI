@@ -3,71 +3,296 @@ document.addEventListener('DOMContentLoaded', function () {
     const chatInput = document.getElementById('chatInput');
     const chatMessages = document.getElementById('chatMessages');
     const welcomeScreen = document.getElementById('welcomeScreen');
+    const welcomeTitle = welcomeScreen ? welcomeScreen.querySelector('h2') : null;
     const modelSelect = document.getElementById('modelSelect');
     const historyList = document.getElementById('historyList');
+    const newChatBtn = document.querySelector('.new-chat-btn');
 
     const urlParams = new URLSearchParams(window.location.search);
     const promptParam = urlParams.get('prompt');
     const topicParam = urlParams.get('topic');
+    const topicIdParam = urlParams.get('topicId');
     const modeParam = urlParams.get('mode');
 
-    if (promptParam) {
-        chatInput.value = decodeURIComponent(promptParam);
-        chatInput.focus();
+    let currentChatId = null;
+    let currentTopicId = topicIdParam || null;
+
+    // Hàm tự động co giãn độ cao cho textarea (tối đa 5 dòng ~ 120px)
+    function autoResizeTextarea() {
+        if (!chatInput) return;
+        chatInput.style.height = 'auto';
+        const maxHeight = 120;
+        if (chatInput.scrollHeight > maxHeight) {
+            chatInput.style.height = maxHeight + 'px';
+            chatInput.style.overflowY = 'auto';
+        } else {
+            chatInput.style.height = (chatInput.scrollHeight) + 'px';
+            chatInput.style.overflowY = 'hidden';
+        }
     }
 
-    // Chỉ tự động tạo phiên bản chat khi User chọn "Tạo đoạn chat mới"
-    if (topicParam && modeParam === 'new') {
+    // Nếu có tham số prompt trên URL (chuyển từ Flashcard qua)
+    if (promptParam && chatInput) {
+        chatInput.value = decodeURIComponent(promptParam);
+        chatInput.focus();
+        setTimeout(autoResizeTextarea, 50);
+    }
+
+    if (newChatBtn) {
+        newChatBtn.addEventListener('click', function () {
+            createNewChatSession("Đoạn chat mới", null, "GENERAL");
+        });
+    }
+
+    // Xử lý khi điều hướng từ trang Flashcard sang
+    if (topicParam) {
         const decodedTopic = decodeURIComponent(topicParam);
-        fetch('/api/ai/chat/create', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ title: decodedTopic })
-        }).then(() => {
-            loadChatHistories();
-        }).catch(err => console.error("Lỗi tạo phiên chat tự động:", err));
+        if (modeParam === 'new') {
+            createNewChatSession(decodedTopic, topicIdParam, "TOPIC");
+        } else if (modeParam === 'continue') {
+            fetch('/api/ai/chat/histories')
+                .then(res => res.json())
+                .then(histories => {
+                    const matched = histories.filter(h => h.topicId === topicIdParam);
+                    if (matched.length > 0) {
+                        matched.sort((a, b) => b.updatedAt - a.updatedAt);
+                        const targetChat = matched[0];
+                        currentChatId = targetChat.chatId;
+                        currentTopicId = targetChat.topicId;
+                        updateWelcomeTitle(targetChat.title);
+                        renderMessages(targetChat.messagesJson);
+                        loadChatHistories();
+                    } else {
+                        createNewChatSession(decodedTopic, topicIdParam, "TOPIC");
+                    }
+                })
+                .catch(() => {
+                    createNewChatSession(decodedTopic, topicIdParam, "TOPIC");
+                });
+        }
     } else {
         loadChatHistories();
     }
-    if (chatInput) {
-    chatInput.addEventListener('input', function () {
-        this.style.height = 'auto'; // Reset chiều cao để tính toán lại
-        
-        // Tính toán chiều cao tương ứng với khoảng 5 dòng (mỗi dòng ~24px, tổng khoảng 120px)
-        const maxHeight = 120; 
-        if (this.scrollHeight > maxHeight) {
-            this.style.height = maxHeight + 'px';
-            this.style.overflowY = 'auto'; // Hiện thanh kéo khi vượt quá 5 dòng
-        } else {
-            this.style.height = (this.scrollHeight) + 'px';
-            this.style.overflowY = 'hidden'; // Ẩn thanh kéo khi dưới 5 dòng
-        }
-    });
-}
 
-    function startChatMode() {
-        welcomeScreen.classList.add('d-none');
-        chatMessages.classList.remove('d-none');
+    if (chatInput) {
+        chatInput.addEventListener('input', autoResizeTextarea);
     }
 
-    historyList.addEventListener('click', function(e) {
-        // Toggle mở/đóng menu 3 chấm
+    function updateWelcomeTitle(titleText) {
+        if (welcomeTitle) {
+            welcomeTitle.innerHTML = titleText ? `Đoạn chat: ${escapeHtml(titleText)}` : `Chào bạn, tôi có thể giúp gì cho bạn?`;
+        }
+    }
+
+    function renderMessages(messagesJson) {
+        chatMessages.innerHTML = "";
+        let hasMessages = false;
+        if (messagesJson) {
+            try {
+                let rawJson = messagesJson.trim();
+                if (!rawJson.startsWith("[")) rawJson = "[" + rawJson + "]";
+
+                const messages = JSON.parse(rawJson);
+                if (messages && messages.length > 0) {
+                    hasMessages = true;
+                    messages.forEach(msg => {
+                        const cssClass = msg.sender === 'user' ? 'user' : 'ai';
+                        let cleanContent = (msg.content || "").trim();
+
+                        if (msg.sender === 'ai') {
+                            const isPersonal = msg.modelType === 'ai-personal';
+                            const badgeHtml = isPersonal
+                                ? `<div class="ai-model-badge personal">🧠 AI Personal</div>`
+                                : `<div class="ai-model-badge gemini">✨ API AI</div>`;
+
+                            let toolbarHtml = "";
+                            if (cleanContent.includes("englishVocabulary") || cleanContent.includes("{")) {
+                                toolbarHtml = `<div class="ai-action-toolbar"><button class="ai-action-btn copy-json-btn" title="Sao chép JSON"><i class="bx bx-copy"></i></button><button class="ai-action-btn add-flashcard-btn" title="Thêm trực tiếp vào Flashcard"><i class="bx bx-plus-circle"></i></button></div>`;
+                            }
+
+                            // Dòng ghép HTML liền mạch để không sinh khoảng trắng thừa
+                            contentHtml = `${toolbarHtml}${badgeHtml}<div class="message-text">${escapeHtml(cleanContent)}</div>`;
+                        } else {
+                            contentHtml = escapeHtml(cleanContent);
+                        }
+
+                        chatMessages.innerHTML += `<div class="message ${cssClass} position-relative" data-raw="${escapeHtml(cleanContent)}">${contentHtml}</div>`;
+                    });
+                }
+            } catch (err) { console.error(err); }
+        }
+
+        if (hasMessages) {
+            if (welcomeScreen) welcomeScreen.classList.add('d-none');
+            chatMessages.classList.remove('d-none');
+        } else {
+            chatMessages.classList.add('d-none');
+            if (welcomeScreen) welcomeScreen.classList.remove('d-none');
+        }
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+    }
+
+    // LẮNG NGHE SỰ KIỆN CLICK NÚT TRONG KHUNG TIN NHẮN
+    if (chatMessages) {
+        chatMessages.addEventListener('click', async function (e) {
+            // 1. Nút Sao chép JSON
+            if (e.target.closest('.copy-json-btn')) {
+                const msgEl = e.target.closest('.message');
+                const rawText = msgEl.getAttribute('data-raw');
+                if (rawText) {
+                    navigator.clipboard.writeText(rawText);
+                    if (window.showToast) window.showToast("Đã sao chép JSON vào bộ nhớ đệm!", "success");
+                }
+            }
+            // 2. Nút Thêm trực tiếp vào Flashcard (Chống Spam & Lọc trùng)
+            else if (e.target.closest('.add-flashcard-btn')) {
+                const addBtn = e.target.closest('.add-flashcard-btn');
+                const msgEl = e.target.closest('.message');
+                const rawText = msgEl.getAttribute('data-raw');
+
+                const activeTopicId = currentTopicId || urlParams.get('topicId');
+
+                if (!activeTopicId || activeTopicId === 'null') {
+                    if (window.showToast) window.showToast("Đoạn chat này là Chat thường (không gắn với Flashcard)!", "warning");
+                    return;
+                }
+
+                // KHÓA CHỐNG SPAM
+                addBtn.disabled = true;
+                addBtn.style.pointerEvents = 'none';
+                const originalIcon = addBtn.innerHTML;
+                addBtn.innerHTML = `<i class="bx bx-loader-alt bx-spin"></i>`;
+
+                try {
+                    const res = await fetch('/api/topics/append-json', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ topicId: activeTopicId, json: rawText })
+                    });
+
+                    const messageText = await res.text();
+
+                    if (res.ok) {
+                        if (window.showToast) {
+                            const isWarning = messageText.includes("Đã bỏ qua") || messageText.includes("đã tồn tại");
+                            const toastType = isWarning ? "warning" : "success";
+                            // Nút chuyển hướng mở thẳng giao diện Flashcard
+                            window.showToast(`${messageText} <a href='/' class='text-white text-decoration-underline fw-bold ms-2'>Tới Flashcard <i class='bx bx-right-arrow-alt'></i></a>`, toastType);
+                        }
+                    } else {
+                        if (window.showToast) window.showToast("Lỗi khi thêm từ vựng vào Flashcard!", "danger");
+                    }
+                } catch (err) {
+                    console.error("Lỗi:", err);
+                    if (window.showToast) window.showToast("Lỗi hệ thống kết nối!", "danger");
+                } finally {
+                    // MỞ KHÓA NÚT SAU KHI XỬ LÝ
+                    setTimeout(() => {
+                        addBtn.disabled = false;
+                        addBtn.style.pointerEvents = 'auto';
+                        addBtn.innerHTML = originalIcon;
+                    }, 1200);
+                }
+            }
+        });
+    }
+
+    async function createNewChatSession(title, topicId, chatType) {
+        try {
+            const res = await fetch('/api/ai/chat/create', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    title: title,
+                    topicId: topicId,
+                    chatType: chatType || "GENERAL"
+                })
+            });
+            if (res.ok) {
+                const newSession = await res.json();
+                currentChatId = newSession.chatId;
+                currentTopicId = newSession.topicId;
+
+                chatMessages.innerHTML = "";
+                chatMessages.classList.add('d-none');
+                if (welcomeScreen) welcomeScreen.classList.remove('d-none');
+                updateWelcomeTitle(newSession.title);
+
+                loadChatHistories();
+            }
+        } catch (err) {
+            console.error("Lỗi tạo phiên chat:", err);
+        }
+    }
+
+    // Xử lý sự kiện click trên Sidebar (Async)
+    historyList.addEventListener('click', async function (e) {
+        const itemEl = e.target.closest('.history-item');
+
         if (e.target.classList.contains('action-toggle')) {
             document.querySelectorAll('.action-menu').forEach(m => m.classList.remove('show'));
             const menu = e.target.nextElementSibling;
-            menu.classList.toggle('show');
+            if (menu) menu.classList.toggle('show');
             e.stopPropagation();
-        } 
-        // Logic xổ xuống (Toggle Group)
-        else if (e.target.closest('.group-header')) {
+        }
+        else if (e.target.closest('.rename-btn')) {
+            const wrapper = e.target.closest('.history-item-wrapper');
+            const item = wrapper.querySelector('.history-item');
+            const chatId = item.getAttribute('data-id');
+            const oldTitle = item.textContent.trim();
+            const newTitle = prompt("Nhập tên mới cho đoạn chat:", oldTitle);
+
+            if (newTitle && newTitle.trim() !== "" && newTitle !== oldTitle) {
+                await fetch('/api/ai/chat/rename', {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ chatId: chatId, title: newTitle.trim() })
+                });
+                if (window.showToast) window.showToast("Đã đổi tên thành công!", "success");
+                loadChatHistories();
+            }
+            e.stopPropagation();
+        }
+        else if (e.target.closest('.delete-btn')) {
+            const wrapper = e.target.closest('.history-item-wrapper');
+            const item = wrapper.querySelector('.history-item');
+            const chatId = item.getAttribute('data-id');
+
+            if (confirm("Bạn có chắc chắn muốn xóa đoạn chat này?")) {
+                await fetch(`/api/ai/chat/${chatId}`, { method: 'DELETE' });
+                if (currentChatId === chatId) {
+                    currentChatId = null;
+                    chatMessages.innerHTML = "";
+                    chatMessages.classList.add('d-none');
+                    if (welcomeScreen) welcomeScreen.classList.remove('d-none');
+                    updateWelcomeTitle("");
+                }
+                if (window.showToast) window.showToast("Đã xóa đoạn chat!", "success");
+                loadChatHistories();
+            }
+            e.stopPropagation();
+        }
+        else if (e.target.classList.contains('group-icon')) {
             const header = e.target.closest('.group-header');
             const childrenContainer = header.nextElementSibling;
             if (childrenContainer) {
                 const isHidden = childrenContainer.style.display === 'none';
                 childrenContainer.style.display = isHidden ? 'block' : 'none';
-                header.querySelector('.group-icon').classList.toggle('bx-chevron-right', !isHidden);
-                header.querySelector('.group-icon').classList.toggle('bx-chevron-down', isHidden);
+                e.target.classList.toggle('bx-chevron-right', !isHidden);
+                e.target.classList.toggle('bx-chevron-down', isHidden);
             }
+            e.stopPropagation();
+        }
+        else if (itemEl && itemEl.getAttribute('data-type') !== 'TOPIC_ORIGIN') {
+            currentChatId = itemEl.getAttribute('data-id');
+            currentTopicId = itemEl.getAttribute('data-topic-id');
+
+            const messagesJson = itemEl.getAttribute('data-messages');
+            const title = itemEl.getAttribute('data-title');
+
+            updateWelcomeTitle(title);
+            renderMessages(messagesJson);
+            e.stopPropagation();
         }
     });
 
@@ -75,41 +300,62 @@ document.addEventListener('DOMContentLoaded', function () {
         document.querySelectorAll('.action-menu').forEach(m => m.classList.remove('show'));
     });
 
+    // Hàm gửi tin nhắn AI
     async function handleSendMessage() {
         const text = chatInput.value.trim();
         if (!text) return;
 
-        startChatMode();
+        if (!currentChatId) {
+            await createNewChatSession("Đoạn chat mới", null, "GENERAL");
+        }
 
-        chatMessages.innerHTML += `<div class="message user">${text}</div>`;
+        if (welcomeScreen) welcomeScreen.classList.add('d-none');
+        chatMessages.classList.remove('d-none');
+
+        chatMessages.innerHTML += `<div class="message user">${escapeHtml(text)}</div>`;
         chatInput.value = '';
+        autoResizeTextarea();
         chatMessages.scrollTop = chatMessages.scrollHeight;
 
         const loadingId = 'loading-' + Date.now();
-        chatMessages.innerHTML += `<div class="message ai" id="${loadingId}">Đang xử lý thuật toán học máy... ⏳</div>`;
+        chatMessages.innerHTML += `<div class="message ai" id="${loadingId}">Đang xử lý... ⏳</div>`;
         chatMessages.scrollTop = chatMessages.scrollHeight;
 
-        setTimeout(async () => {
-            try {
-                const res = await fetch('/api/ai/chat/send', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ message: text, modelType: modelSelect.value })
-                });
-                const data = await res.json();
-                
-                const loadingElement = document.getElementById(loadingId);
-                if (loadingElement) {
-                    const replyText = data.reply || data.message || "Không có phản hồi từ AI";
-                    // Lấy text hiển thị từ thẻ select thay vì value (sẽ hiện [🤖 CHAT BOT])
-                    const modelName = modelSelect.options[modelSelect.selectedIndex].text.toUpperCase();
-                    loadingElement.innerHTML = `<strong>[${modelName}]</strong><br>${replyText}`;
+        try {
+            const res = await fetch('/api/ai/chat/send', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    message: text,
+                    modelType: modelSelect.value,
+                    chatId: currentChatId
+                })
+            });
+            const data = await res.json();
+
+            const loadingElement = document.getElementById(loadingId);
+            if (loadingElement) {
+                const replyText = (data.reply || data.message || "Không có phản hồi").trim();
+
+                const isPersonal = modelSelect.value === 'ai-personal';
+                const badgeHtml = isPersonal
+                    ? `<div class="ai-model-badge personal">🧠 AI Personal</div>`
+                    : `<div class="ai-model-badge gemini">✨ API AI</div>`;
+
+                let toolbarHtml = "";
+                if (replyText.includes("englishVocabulary") || replyText.includes("{")) {
+                    toolbarHtml = `<div class="ai-action-toolbar"><button class="ai-action-btn copy-json-btn" title="Sao chép JSON"><i class="bx bx-copy"></i></button><button class="ai-action-btn add-flashcard-btn" title="Thêm trực tiếp vào Flashcard"><i class="bx bx-plus-circle"></i></button></div>`;
                 }
-                chatMessages.scrollTop = chatMessages.scrollHeight;
-            } catch (err) {
-                document.getElementById(loadingId).innerHTML = `Lỗi hệ thống kết nối AI!`;
+
+                loadingElement.setAttribute('data-raw', escapeHtml(replyText));
+                loadingElement.innerHTML = `${toolbarHtml}${badgeHtml}<div class="message-text">${escapeHtml(replyText)}</div>`;
             }
-        }, 3000);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+            loadChatHistories();
+        } catch (err) {
+            const loadingElement = document.getElementById(loadingId);
+            if (loadingElement) loadingElement.innerHTML = `Lỗi hệ thống kết nối AI!`;
+        }
     }
 
     sendBtn.addEventListener('click', handleSendMessage);
@@ -136,29 +382,32 @@ document.addEventListener('DOMContentLoaded', function () {
         historyList.innerHTML = "";
         if (!histories || histories.length === 0) return;
 
-        // Gom nhóm theo groupId
-        const groups = {};
+        const topicGroups = {};
+        const generalList = [];
+
         histories.forEach(item => {
-            const gid = item.groupId || item.chatId;
-            if (!groups[gid]) groups[gid] = [];
-            groups[gid].push(item);
+            if (item.chatType === "TOPIC" || item.chatType === "TOPIC_ORIGIN" || item.topicId) {
+                const gid = item.groupId || item.chatId;
+                if (!topicGroups[gid]) topicGroups[gid] = [];
+                topicGroups[gid].push(item);
+            } else {
+                generalList.push(item);
+            }
         });
 
-        for (const groupId in groups) {
-            // Sắp xếp cũ lên trước để lấy bản gốc (No.x sẽ nằm sau)
-            const sortedGroup = groups[groupId].sort((a, b) => a.updatedAt - b.updatedAt);
-            const rootItem = sortedGroup[0];
-            const childItems = sortedGroup.slice(1);
+        // Chat thường (GENERAL)
+        if (generalList.length > 0) {
+            const genHeader = document.createElement("div");
+            genHeader.className = "text-muted small fw-bold px-2 mb-1 mt-2";
+            genHeader.innerHTML = "💬 Chat thường";
+            historyList.appendChild(genHeader);
 
-            const groupDiv = document.createElement("div");
-            groupDiv.className = "mb-2";
-
-            // Render Mục Gốc (Root)
-            const hasChildren = childItems.length > 0;
-            const rootHtml = `
-                <div class="history-item-wrapper group-header" style="background-color: #eae2d8; font-weight: bold;">
-                    <i class="bx ${hasChildren ? 'bx-chevron-down group-icon' : 'bx-message'} me-2 ms-1"></i>
-                    <div class="history-item" data-id="${rootItem.chatId}">${escapeHtml(rootItem.title)}</div>
+            generalList.forEach(item => {
+                const itemDiv = document.createElement("div");
+                itemDiv.className = "history-item-wrapper mb-1";
+                itemDiv.innerHTML = `
+                    <i class="bx bx-message ms-2 me-1 text-muted"></i>
+                    <div class="history-item" data-id="${item.chatId}" data-type="GENERAL" data-title="${escapeHtml(item.title)}" data-messages="${escapeHtml(item.messagesJson || '[]')}">${escapeHtml(item.title)}</div>
                     <div class="dropdown-action">
                         <i class="bx bx-dots-vertical-rounded action-toggle"></i>
                         <div class="action-menu">
@@ -166,29 +415,63 @@ document.addEventListener('DOMContentLoaded', function () {
                             <button class="delete-btn"><i class="bx bx-trash"></i> Xóa</button>
                         </div>
                     </div>
-                </div>
-            `;
+                `;
+                historyList.appendChild(itemDiv);
+            });
+        }
 
-            // Render Các mục con (No.1, No.2...)
-            let childrenHtml = `<div class="children-container" style="padding-left: 20px; border-left: 1px solid #dcd6ce; margin-left: 12px; margin-top: 4px;">`;
-            childItems.forEach(child => {
-                childrenHtml += `
-                    <div class="history-item-wrapper mt-1">
-                        <div class="history-item" data-id="${child.chatId}">${escapeHtml(child.title)}</div>
+        // Chat theo chủ đề (TOPIC)
+        if (Object.keys(topicGroups).length > 0) {
+            const topicHeader = document.createElement("div");
+            topicHeader.className = "text-muted small fw-bold px-2 mb-1 mt-3";
+            topicHeader.innerHTML = "📁 Chat theo chủ đề";
+            historyList.appendChild(topicHeader);
+
+            for (const groupId in topicGroups) {
+                const groupItems = topicGroups[groupId];
+
+                let rootItem = groupItems.find(i => i.chatType === "TOPIC_ORIGIN" || i.chatId.endsWith("-origin"));
+                if (!rootItem) rootItem = groupItems[0];
+
+                const childItems = groupItems.filter(i => i.chatId !== rootItem.chatId);
+
+                const groupDiv = document.createElement("div");
+                groupDiv.className = "mb-2";
+
+                const hasChildren = childItems.length > 0;
+                const rootHtml = `
+                    <div class="history-item-wrapper group-header" style="background-color: #eae2d8; font-weight: bold;">
+                        <i class="bx ${hasChildren ? 'bx-chevron-down group-icon' : 'bx-folder'} me-2 ms-1" style="cursor: pointer;"></i>
+                        <div class="history-item text-muted" data-id="${rootItem.chatId}" data-type="TOPIC_ORIGIN" style="cursor: default;">${escapeHtml(rootItem.title)}</div>
                         <div class="dropdown-action">
                             <i class="bx bx-dots-vertical-rounded action-toggle"></i>
                             <div class="action-menu">
-                                <button class="rename-btn"><i class="bx bx-edit"></i> Đổi tên</button>
-                                <button class="delete-btn"><i class="bx bx-trash"></i> Xóa</button>
+                                <button class="rename-btn"><i class="bx bx-edit"></i> Đổi tên nhóm</button>
                             </div>
                         </div>
                     </div>
                 `;
-            });
-            childrenHtml += `</div>`;
 
-            groupDiv.innerHTML = rootHtml + (hasChildren ? childrenHtml : "");
-            historyList.appendChild(groupDiv);
+                let childrenHtml = `<div class="children-container" style="padding-left: 20px; border-left: 1px solid #dcd6ce; margin-left: 12px; margin-top: 4px;">`;
+                childItems.forEach(child => {
+                    childrenHtml += `
+                        <div class="history-item-wrapper mt-1">
+                            <div class="history-item" data-id="${child.chatId}" data-type="TOPIC" data-topic-id="${child.topicId || ''}" data-title="${escapeHtml(child.title)}" data-messages="${escapeHtml(child.messagesJson || '[]')}">${escapeHtml(child.title)}</div>
+                            <div class="dropdown-action">
+                                <i class="bx bx-dots-vertical-rounded action-toggle"></i>
+                                <div class="action-menu">
+                                    <button class="rename-btn"><i class="bx bx-edit"></i> Đổi tên</button>
+                                    <button class="delete-btn"><i class="bx bx-trash"></i> Xóa</button>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                });
+                childrenHtml += `</div>`;
+
+                groupDiv.innerHTML = rootHtml + (hasChildren ? childrenHtml : "");
+                historyList.appendChild(groupDiv);
+            }
         }
     }
 

@@ -12,11 +12,11 @@ import java.util.UUID;
 import java.util.concurrent.ExecutionException;
 
 @Service
+@SuppressWarnings("null")
 public class ChatHistoryService {
 
     private static final String COLLECTION_NAME = "ai_chat_histories";
 
-    // Hàm phụ trợ: Lấy chuỗi userId bảo mật từ username (đồng bộ với TopicService)
     public String getUserIdByUsername(String username) {
         try {
             Firestore db = FirestoreClient.getFirestore();
@@ -35,14 +35,12 @@ public class ChatHistoryService {
         return username; 
     }
 
-    // 1. Lấy danh sách lịch sử chat của user theo đúng userId bảo mật
     public List<AiChatHistory> getHistoriesByUser(String username) throws ExecutionException, InterruptedException {
         Firestore db = FirestoreClient.getFirestore();
         String realUserId = getUserIdByUsername(username);
 
         ApiFuture<QuerySnapshot> future = db.collection(COLLECTION_NAME)
                 .whereEqualTo("userId", realUserId)
-                .orderBy("updatedAt", Query.Direction.DESCENDING)
                 .get();
 
         List<QueryDocumentSnapshot> documents = future.get().getDocuments();
@@ -50,65 +48,168 @@ public class ChatHistoryService {
         for (DocumentSnapshot doc : documents) {
             list.add(doc.toObject(AiChatHistory.class));
         }
+
+        list.sort((a, b) -> Long.compare(a.getUpdatedAt(), b.getUpdatedAt()));
         return list;
     }
 
-    // 2. Tạo phiên bản chat mới gắn liền với userId thực tế và nhóm groupId
-    public AiChatHistory createNewChatSession(String username, String baseTitle, String topicId) throws ExecutionException, InterruptedException {
+    public AiChatHistory createNewChatSession(String username, String baseTitle, String topicId, String chatType) throws ExecutionException, InterruptedException {
         Firestore db = FirestoreClient.getFirestore();
         String realUserId = getUserIdByUsername(username);
-        
+
         List<AiChatHistory> existing = getHistoriesByUser(username);
-        String groupId = null;
-        int countMatch = 0;
 
-        for (AiChatHistory h : existing) {
-            if (h.getTitle() != null && (h.getTitle().equals(baseTitle) || h.getTitle().startsWith(baseTitle + " No."))) {
-                if (groupId == null) {
-                    groupId = h.getGroupId() != null ? h.getGroupId() : h.getChatId();
+        if ("TOPIC".equals(chatType) && topicId != null && !topicId.isEmpty()) {
+            boolean hasOrigin = false;
+            int maxNo = 0;
+
+            for (AiChatHistory h : existing) {
+                if (topicId.equals(h.getTopicId())) {
+                    if ((topicId + "-origin").equals(h.getChatId())) {
+                        hasOrigin = true;
+                    }
+                    if (h.getChatId() != null && h.getChatId().contains("-no")) {
+                        try {
+                            String numStr = h.getChatId().substring(h.getChatId().lastIndexOf("-no") + 3);
+                            int num = Integer.parseInt(numStr);
+                            if (num > maxNo) maxNo = num;
+                        } catch (Exception ignored) {}
+                    }
                 }
-                countMatch++;
             }
+
+            if (!hasOrigin) {
+                AiChatHistory originSession = new AiChatHistory();
+                originSession.setChatId(topicId + "-origin");
+                originSession.setUserId(realUserId);
+                originSession.setTopicId(topicId);
+                originSession.setGroupId(topicId + "-origin");
+                originSession.setTitle(baseTitle);
+                originSession.setChatType("TOPIC_ORIGIN");
+                originSession.setMessagesJson("[]");
+                originSession.setUpdatedAt(System.currentTimeMillis());
+
+                db.collection(COLLECTION_NAME).document(originSession.getChatId()).set(originSession).get();
+            }
+
+            int nextNo = maxNo + 1;
+            AiChatHistory noSession = new AiChatHistory();
+            noSession.setChatId(topicId + "-no" + nextNo);
+            noSession.setUserId(realUserId);
+            noSession.setTopicId(topicId);
+            noSession.setGroupId(topicId + "-origin");
+            noSession.setTitle(baseTitle + " No." + nextNo);
+            noSession.setChatType("TOPIC");
+            noSession.setMessagesJson("[]");
+            noSession.setUpdatedAt(System.currentTimeMillis() + nextNo);
+
+            db.collection(COLLECTION_NAME).document(noSession.getChatId()).set(noSession).get();
+            return noSession;
+        } else {
+            AiChatHistory generalSession = new AiChatHistory();
+            String genId = "gen-" + UUID.randomUUID().toString().substring(0, 8);
+            generalSession.setChatId(genId);
+            generalSession.setUserId(realUserId);
+            generalSession.setGroupId(genId);
+            generalSession.setTitle(baseTitle != null ? baseTitle : "Đoạn chat mới");
+            generalSession.setChatType("GENERAL");
+            generalSession.setMessagesJson("[]");
+            generalSession.setUpdatedAt(System.currentTimeMillis());
+
+            db.collection(COLLECTION_NAME).document(generalSession.getChatId()).set(generalSession).get();
+            return generalSession;
         }
-
-        if (groupId == null) {
-            groupId = UUID.randomUUID().toString();
-        }
-
-        String finalTitle = baseTitle;
-        if (countMatch > 0) {
-            finalTitle = baseTitle + " No." + countMatch;
-        }
-
-        AiChatHistory newSession = new AiChatHistory();
-        newSession.setChatId(UUID.randomUUID().toString());
-        newSession.setUserId(realUserId); // Lưu đúng userId liên kết database tài khoản
-        newSession.setGroupId(groupId);
-        newSession.setTitle(finalTitle);
-        newSession.setTopicId(topicId);
-        newSession.setUpdatedAt(System.currentTimeMillis());
-
-        db.collection(COLLECTION_NAME).document(newSession.getChatId()).set(newSession);
-        return newSession;
     }
 
-    // Cập nhật tin nhắn vào phiên chat
-    public void saveMessageToSession(String chatId, String userMsg, String aiMsg) {
+    public String getMessagesJsonByChatId(String chatId) {
         try {
+            Firestore db = FirestoreClient.getFirestore();
+            DocumentSnapshot doc = db.collection(COLLECTION_NAME).document(chatId).get().get();
+            if (doc.exists()) {
+                return doc.getString("messagesJson");
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return "[]";
+    }
+
+    public void saveMessageToSession(String chatId, String sender, String messageText, String modelType) {
+        try {
+            if (chatId == null || chatId.isEmpty() || chatId.endsWith("-origin")) return;
+
             Firestore db = FirestoreClient.getFirestore();
             DocumentReference docRef = db.collection(COLLECTION_NAME).document(chatId);
             
             ApiFuture<DocumentSnapshot> future = docRef.get();
             DocumentSnapshot document = future.get();
             
-            if (document.exists()) {
+            String safeMsgText = messageText != null ? messageText : "";
+            String escapedMsg = safeMsgText.replace("\\", "\\\\").replace("\"", "\\\"").replace("\n", "\\n").replace("\r", "");
+            
+            // Bổ sung trường modelType vào JSON lưu trên Firebase
+            String safeModelType = (modelType != null) ? modelType : "gemini";
+            String newMsgJson = "{\"sender\":\"" + sender + "\",\"content\":\"" + escapedMsg + "\",\"modelType\":\"" + safeModelType + "\",\"timestamp\":" + System.currentTimeMillis() + "}";
+
+            if (document != null && document.exists()) {
                 AiChatHistory history = document.toObject(AiChatHistory.class);
-                // Đơn giản hóa việc lưu chuỗi tin nhắn hoặc mảng JSON
-                String existingMessages = history.getMessagesJson() != null ? history.getMessagesJson() : "[]";
+                String currentJson = (history != null && history.getMessagesJson() != null) ? history.getMessagesJson() : "[]";
                 
-                // Cập nhật lại thời gian và nội dung
-                docRef.update("updatedAt", System.currentTimeMillis());
+                if (currentJson.equals("[]") || currentJson.trim().isEmpty()) {
+                    currentJson = "[" + newMsgJson + "]";
+                } else if (currentJson.length() > 1) {
+                    currentJson = currentJson.substring(0, currentJson.length() - 1) + "," + newMsgJson + "]";
+                }
+                
+                docRef.update("messagesJson", currentJson, "updatedAt", System.currentTimeMillis()).get();
             }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    public void renameChatSession(String chatId, String newTitle) {
+        try {
+            Firestore db = FirestoreClient.getFirestore();
+            DocumentReference docRef = db.collection(COLLECTION_NAME).document(chatId);
+            DocumentSnapshot doc = docRef.get().get();
+
+            if (doc.exists()) {
+                AiChatHistory currentChat = doc.toObject(AiChatHistory.class);
+
+                // Nếu là đổi tên cho bản Gốc (Topic Header)
+                if (chatId.endsWith("-origin") || "TOPIC_ORIGIN".equals(currentChat.getChatType())) {
+                    String groupId = currentChat.getGroupId();
+                    
+                    // Lấy toàn bộ các đoạn chat con thuộc nhóm này
+                    List<QueryDocumentSnapshot> groupDocs = db.collection(COLLECTION_NAME)
+                            .whereEqualTo("groupId", groupId)
+                            .get().get().getDocuments();
+
+                    for (DocumentSnapshot childDoc : groupDocs) {
+                        String childId = childDoc.getId();
+                        if (childId.endsWith("-origin")) {
+                            childDoc.getReference().update("title", newTitle);
+                        } else if (childId.contains("-no")) {
+                            String noSuffix = childId.substring(childId.lastIndexOf("-no"));
+                            String noNumber = noSuffix.replace("-no", " No.");
+                            childDoc.getReference().update("title", newTitle + noNumber);
+                        }
+                    }
+                } else {
+                    // Nếu đổi tên một đoạn chat lẻ
+                    docRef.update("title", newTitle).get();
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    public void deleteChatSession(String chatId) {
+        try {
+            Firestore db = FirestoreClient.getFirestore();
+            db.collection(COLLECTION_NAME).document(chatId).delete().get();
         } catch (Exception e) {
             e.printStackTrace();
         }
