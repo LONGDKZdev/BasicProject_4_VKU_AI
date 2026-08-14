@@ -67,3 +67,8 @@ window.showToast = function (message, type = "success") {
 window.notify = function (msg, type = 'success') {
   window.showToast(msg, type);
 };
+
+//  GHI ĐÈ HÀM alert() CỦA TRÌNH DUYỆT BẰNG TOAST
+window.alert = function (message) {
+  window.showToast(message, "warning");
+};

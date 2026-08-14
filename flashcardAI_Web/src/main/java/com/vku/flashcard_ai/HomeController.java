@@ -12,6 +12,12 @@ public class HomeController {
         return "flashcard";
     }
 
+    // Route điều hướng trang học lật thẻ
+    @GetMapping("/study-flashcard")
+    public String studyFlashcardPage() {
+        return "study_flashcard"; // Trỏ tới templates/study_flashcard.html
+    }
+    
     // Trang Chat AI
     @GetMapping("/chat-ai")
     public String chatAiPage() {

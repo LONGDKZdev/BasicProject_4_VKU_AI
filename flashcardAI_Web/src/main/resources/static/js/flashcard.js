@@ -1,6 +1,6 @@
 (function () {
-  const API_BASE_URL = "http://localhost:8080/api/topics";
-  let currentUserId = null; // Không còn gán cứng user_test_123 nữa
+  const API_BASE_URL = "/api/topics";
+  let currentUserId = null;
 
   const COLORS = [
     "#4ade80", "#60a5fa", "#f472b6", "#facc15", "#f87171",
@@ -26,6 +26,34 @@
       .replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
   }
 
+  function showConfirmModal(message, onConfirm, onCancel = null) {
+    const modalEl = document.getElementById("confirmModal");
+    if (!modalEl) return;
+    const modalInstance =
+      bootstrap.Modal.getInstance(modalEl) || new bootstrap.Modal(modalEl);
+    document.getElementById("confirmModalMessage").innerText = message;
+
+    const btnConfirm = document.getElementById("confirmModalBtn");
+    const btnCancel = document.querySelector(
+      "#confirmModal [data-bs-dismiss='modal']"
+    );
+
+    const newBtnConfirm = btnConfirm.cloneNode(true);
+    btnConfirm.parentNode.replaceChild(newBtnConfirm, btnConfirm);
+    newBtnConfirm.addEventListener("click", () => {
+      if (onConfirm) onConfirm();
+      modalInstance.hide();
+    });
+
+    if (onCancel) {
+      const newBtnCancel = btnCancel.cloneNode(true);
+      btnCancel.parentNode.replaceChild(newBtnCancel, btnCancel);
+      newBtnCancel.addEventListener("click", onCancel);
+    }
+
+    modalInstance.show();
+  }
+
   let currentTopicId = null;
   let selectedColor = COLORS[0];
   let topics = [];
@@ -48,7 +76,6 @@
     renderColorPicker(elements);
     bindEvents(elements);
 
-    // Lấy chính xác user hiện tại thông qua API bảo mật
     fetch(`${API_BASE_URL}/current-user`)
       .then(res => {
         if (!res.ok) throw new Error("Chưa đăng nhập");
@@ -60,7 +87,6 @@
       })
       .catch(err => {
         console.error("Lỗi xác thực người dùng:", err);
-        window.location.href = "/login"; // Chuyển hướng về trang login nếu chưa xác thực
       });
 
     function renderColorPicker(els) {
@@ -80,11 +106,34 @@
     }
 
     function loadTopicsFromServer() {
-      fetch(API_BASE_URL) // Backend tự lấy qua Principal nên không cần truyền param ?userId nữa
+      fetch(API_BASE_URL)
         .then(res => res.json())
         .then(data => {
           topics = data || [];
           renderTopics();
+
+          const urlParams = new URLSearchParams(window.location.search);
+          const autoEditTopicId = urlParams.get("editTopicId");
+
+          if (autoEditTopicId) {
+            const targetTopic = topics.find((t) => t.topicId === autoEditTopicId);
+            if (targetTopic) {
+              currentTopicId = targetTopic.topicId;
+              elements.editTopicName.value = targetTopic.name;
+
+              let displayData = (targetTopic.dataJson || "").trim();
+              if (displayData.startsWith("[")) displayData = displayData.substring(1).trim();
+              if (displayData.endsWith("]")) displayData = displayData.substring(0, displayData.length - 1).trim();
+
+              elements.editTopicData.value = displayData;
+              selectedColor = targetTopic.color || COLORS[0];
+              renderColorPicker(elements);
+              elements.editTopicModal.show();
+
+              // 🪄 ẨN THAM SỐ URL DƯ THỪA ĐỂ BẢO MẬT & ĐẸP MẮT
+              window.history.replaceState({}, document.title, window.location.pathname);
+            }
+          }
         })
         .catch(err => console.error("Lỗi tải chủ đề:", err));
     }
@@ -112,33 +161,31 @@
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(newTopic)
         })
-        .then(res => {
-          if (res.ok) {
-            loadTopicsFromServer();
-            els.topicInput.value = "";
-            const modalEl = document.getElementById('addTopicModal');
-            const modal = bootstrap.Modal.getInstance(modalEl);
-            if (modal) modal.hide();
-            if (window.showToast) showToast("Đã tạo chủ đề mới thành công!", "success");
-          } else {
-            if (window.showToast) showToast("Lỗi khi tạo chủ đề!", "danger");
-          }
-        })
-        .catch(err => console.error("Lỗi:", err));
+          .then(res => {
+            if (res.ok) {
+              loadTopicsFromServer();
+              els.topicInput.value = "";
+              const modalEl = document.getElementById('addTopicModal');
+              const modal = bootstrap.Modal.getInstance(modalEl);
+              if (modal) modal.hide();
+              if (window.showToast) showToast("Đã tạo chủ đề mới thành công!", "success");
+            } else {
+              if (window.showToast) showToast("Lỗi khi tạo chủ đề!", "danger");
+            }
+          })
+          .catch(err => console.error("Lỗi:", err));
       });
 
       if (els.btnCopyEditPrompt) {
         els.btnCopyEditPrompt.addEventListener("click", function () {
           const topicName = els.editTopicName.value.trim() || "Chủ đề mới";
-          
+
           fetch('/api/ai/chat/histories')
             .then(res => res.json())
             .then(histories => {
               const btnContinue = document.getElementById("btn-continue-chat");
-              
-              // Kiểm tra xem đã có lịch sử chat nào thuộc topicId này chưa
               const hasHistory = histories && histories.some(h => h.topicId === currentTopicId);
-              
+
               if (btnContinue) {
                 if (hasHistory) {
                   btnContinue.disabled = false;
@@ -161,14 +208,14 @@
 
           const btnCreateNew = document.getElementById("btn-create-new-chat");
           if (btnCreateNew) {
-            btnCreateNew.onclick = function() {
+            btnCreateNew.onclick = function () {
               redirectToChat(topicName, currentTopicId, 'new');
             };
           }
 
           const btnContinue = document.getElementById("btn-continue-chat");
           if (btnContinue) {
-            btnContinue.onclick = function() {
+            btnContinue.onclick = function () {
               redirectToChat(topicName, currentTopicId, 'continue');
             };
           }
@@ -177,7 +224,7 @@
 
       function redirectToChat(topicName, topicId, mode) {
         const promptText = `Bạn hãy tạo 10 cặp thẻ flashcard cho chủ đề: "${topicName}".\n\nMỗi thẻ có cấu trúc JSON:\n{\n  "englishVocabulary": "Beautiful",\n  "vietnameseVocabulary": "Xinh đẹp",\n  "example": "She has a beautiful smile. Dịch: Cô ấy có nụ cười xinh đẹp.",\n  "pronunciation": "/ˈbjuːtɪfl/",\n  "wordPos": "(adj)"\n}\n\nYÊU CẦU BẮT BUỘC:\n1. Chỉ trả về CÁC OBJECT NGOẶC NHỌN {...} ngăn cách bằng dấu phẩy. KHÔNG bọc ngoặc vuông [...] ở ngoài.\n2. Phân bổ đồng đều loại từ (n), (v), (adj), (adv).`;
-        
+
         if (mode === 'new') {
           window.location.href = `/chat-ai?prompt=` + encodeURIComponent(promptText) + `&topic=` + encodeURIComponent(topicName) + `&topicId=` + encodeURIComponent(topicId || '') + `&mode=new`;
         } else {
@@ -202,13 +249,15 @@
       topics.forEach((topic, idx) => {
         const col = document.createElement("div");
         const colorVars = getColorVariants(topic.color);
-        
+
         let parsedData = [];
         let isValidData = false;
-        try { 
-          parsedData = JSON.parse(topic.dataJson || "[]"); 
+        try {
+          let clean = (topic.dataJson || "[]").trim();
+          if (!clean.startsWith("[")) clean = "[" + clean + "]";
+          parsedData = JSON.parse(clean);
           isValidData = Array.isArray(parsedData) && parsedData.length > 0;
-        } catch(e) {
+        } catch (e) {
           isValidData = false;
         }
 
@@ -216,11 +265,12 @@
         col.setAttribute("draggable", "true");
         col.dataset.index = idx;
 
+        // BỎ HẲN NÚT KIỂM TRA - CHỈ GIỮ LẠI: BẮT ĐẦU, CHỈNH SỬA, XÓA
         col.innerHTML = `
           <div class="topic-card" style="border-left: 4px solid ${topic.color}; background: linear-gradient(to right, ${colorVars.veryLight}, white);">
-            ${isValidData 
-              ? '<i class="bx bx-check-circle text-success topic-status-icon" title="Dữ liệu hợp lệ"></i>' 
-              : '<i class="bx bx-x-circle text-danger topic-status-icon" title="Thiếu hoặc sai dữ liệu JSON"></i>'}
+            ${isValidData
+            ? '<i class="bx bx-check-circle text-success topic-status-icon" title="Dữ liệu hợp lệ"></i>'
+            : '<i class="bx bx-x-circle text-danger topic-status-icon" title="Thiếu hoặc sai dữ liệu JSON"></i>'}
             <h6 class="fw-bold mb-1 text-truncate">${escapeHtml(topic.name)}</h6>
             <p class="text-muted small mb-3"><i class="bx bx-collection me-1"></i>${parsedData.length} từ vựng</p>
             <div class="d-flex flex-wrap gap-2">
@@ -228,7 +278,7 @@
                 <i class="bx bx-play me-1"></i>Bắt đầu
               </button>
               <button class="btn btn-outline-secondary btn-sm rounded-pill btn-edit">
-                <i class="bx bx-edit me-1"></i>Thêm/Chỉnh sửa
+                <i class="bx bx-edit me-1"></i>Chỉnh sửa
               </button>
               <button class="btn btn-outline-danger btn-sm rounded-pill btn-delete">
                 <i class="bx bx-trash me-1"></i>Xóa
@@ -237,34 +287,38 @@
           </div>
         `;
 
+        // Nút Bắt đầu lật thẻ
+        col.querySelector(".btn-start").addEventListener("click", function () {
+          if (isValidData) {
+            window.location.href = `/study-flashcard?id=${topic.topicId}`;
+          }
+        });
+
+        // Nút Chỉnh sửa
         col.querySelector(".btn-edit").addEventListener("click", function () {
           currentTopicId = topic.topicId;
           els.editTopicName.value = topic.name;
-          
-          // Loại bỏ ngoặc [ ] ngoài cùng để giao diện chỉ hiển thị danh sách khối nhọn {...}
+
           let displayData = (topic.dataJson || "").trim();
           if (displayData.startsWith("[")) displayData = displayData.substring(1).trim();
           if (displayData.endsWith("]")) displayData = displayData.substring(0, displayData.length - 1).trim();
 
           els.editTopicData.value = displayData;
           selectedColor = topic.color || COLORS[0];
-          
-          els.colorPickerContainer.querySelectorAll(".color-option").forEach((n) => {
-            if (n.style.backgroundColor === selectedColor || rgbToHex(n.style.backgroundColor) === selectedColor) {
-              n.classList.add("active");
-            } else {
-              n.classList.remove("active");
-            }
-          });
 
+          renderColorPicker(els);
           els.editTopicModal.show();
         });
 
+        // Nút Xóa có Modal xác nhận
         col.querySelector(".btn-delete").addEventListener("click", function () {
-          if (confirm("Bạn chắc chắn muốn xóa chủ đề này?")) {
+          showConfirmModal("Bạn chắc chắn muốn xóa chủ đề này?", () => {
             fetch(`${API_BASE_URL}/${topic.topicId}`, { method: "DELETE" })
-              .then(() => loadTopicsFromServer());
-          }
+              .then(() => {
+                loadTopicsFromServer();
+                if (window.showToast) showToast("Đã xóa chủ đề!", "success");
+              });
+          });
         });
 
         els.topicsList.appendChild(col);
@@ -276,7 +330,7 @@
           topics,
           function (updatedData) {
             topics = updatedData;
-            
+
             topics.forEach((topic, index) => {
               topic.orderIndex = index;
               fetch(API_BASE_URL, {
@@ -287,9 +341,7 @@
             });
 
             renderTopics();
-            if (window.showToast) {
-              showToast("Đã lưu vị trí sắp xếp mới!", "success");
-            }
+            if (window.showToast) showToast("Đã lưu vị trí sắp xếp mới!", "success");
           }
         );
       }
@@ -302,37 +354,25 @@
 
       if (!name) {
         if (window.showToast) showToast("Vui lòng nhập tên chủ đề!", "warning");
-        else alert("Vui lòng nhập tên chủ đề!");
         return;
       }
 
       if (rawInput) {
-        // 1. Dọn dẹp ký tự Markdown rác
         rawInput = rawInput.replaceAll("```json", "").replaceAll("```", "").trim();
-
-        // 2. Bỏ ngoặc vuông ngoài cùng nếu người dùng cố tình dán cả mảng [ ... ]
         if (rawInput.startsWith("[")) rawInput = rawInput.substring(1).trim();
         if (rawInput.endsWith("]")) rawInput = rawInput.substring(0, rawInput.length - 1).trim();
 
-        // 3. TỰ ĐỘNG SỬA LỖI: Thêm dấu phẩy giữa các khối ngoặc nhọn } { nếu người dùng gõ thiếu
         rawInput = rawInput.replace(/}\s*\{/g, "},{");
-
-        // 4. Bọc lại thành mảng JSON hoàn chỉnh
         rawInput = "[" + rawInput + "]";
 
-        // 5. KIỂM TRA CÚ PHÁP (VALIDATE)
         try {
           const parsedArr = JSON.parse(rawInput);
-          if (!Array.isArray(parsedArr)) {
-            throw new Error("Dữ liệu không phải mảng danh sách từ vựng!");
-          }
+          if (!Array.isArray(parsedArr)) throw new Error();
         } catch (e) {
           if (window.showToast) {
-            showToast("Dữ liệu JSON bị sai cú pháp! Hãy kiểm tra lại các dấu ngoặc nhọn hoặc ngoặc kép.", "danger");
-          } else {
-            alert("Dữ liệu JSON bị sai cú pháp! Hãy kiểm tra lại các dấu ngoặc nhọn hoặc ngoặc kép.");
+            showToast("Dữ liệu JSON bị sai cú pháp! Hãy kiểm tra lại các dấu ngoặc.", "danger");
           }
-          return; // DỪNG LƯU NGAY LẬP TỨC NẾU CÚ PHÁP LỖI
+          return;
         }
       } else {
         rawInput = "[]";
@@ -353,30 +393,16 @@
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(updatedTopic)
       })
-      .then(res => {
-        if (res.ok) {
-          els.editTopicModal.hide();
-          loadTopicsFromServer();
-          if (window.showToast) showToast("Đã lưu thay đổi chủ đề thành công!", "success");
-        } else {
-          if (window.showToast) showToast("Lỗi từ máy chủ khi lưu chủ đề!", "danger");
-          else alert("Lỗi khi lưu chủ đề!");
-        }
-      })
-      .catch(err => console.error("Lỗi:", err));
-    }
-
-    function rgbToHex(rgb) {
-      if (!rgb.startsWith('rgb')) return rgb;
-      let sep = rgb.indexOf(",") > -1 ? "," : " ";
-      rgb = rgb.substr(4).split(")")[0].split(sep);
-      let r = (+rgb[0]).toString(16),
-          g = (+rgb[1]).toString(16),
-          b = (+rgb[2]).toString(16);
-      if (r.length == 1) r = "0" + r;
-      if (g.length == 1) g = "0" + g;
-      if (b.length == 1) b = "0" + b;
-      return "#" + r + g + b;
+        .then(res => {
+          if (res.ok) {
+            els.editTopicModal.hide();
+            loadTopicsFromServer();
+            if (window.showToast) showToast("Đã lưu thay đổi chủ đề thành công!", "success");
+          } else {
+            if (window.showToast) showToast("Lỗi từ máy chủ khi lưu chủ đề!", "danger");
+          }
+        })
+        .catch(err => console.error("Lỗi:", err));
     }
   });
 })();

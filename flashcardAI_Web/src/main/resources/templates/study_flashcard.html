@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Đang học Flashcard - Study Space</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <link href="https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css" rel="stylesheet" />
+  <link rel="stylesheet" th:href="@{/css/study_flashcard.css}" />
+</head>
+
+<body class="bg-light">
+  <!-- Header cố định -->
+  <header class="bg-white shadow-sm d-flex justify-content-between align-items-center px-4 py-3 sticky-top">
+    <div class="d-flex align-items-center gap-3">
+      <h4 class="fw-bold m-0 d-flex align-items-center text-dark">
+        <i class="bx bx-book-heart text-primary me-2 fs-3"></i>
+        <span id="study-topic-name">Đang tải chủ đề...</span>
+      </h4>
+    </div>
+    <div class="d-flex align-items-center gap-2">
+      <button id="btn-close-study" class="btn btn-outline-secondary rounded-pill fw-bold px-4">
+        <i class="bx bx-arrow-back me-1"></i> Quay lại
+      </button>
+    </div>
+  </header>
+
+  <!-- Khu vực lật thẻ -->
+  <main class="study-main-area d-flex flex-column align-items-center justify-content-center">
+    <!-- Lớp phủ khi phóng to thẻ -->
+    <div id="study-overlay" class="study-overlay"></div>
+
+    <!-- Khung chứa thẻ -->
+    <div id="study-carousel" class="study-carousel-container">
+      <!-- Javascript sẽ render thẻ vào đây -->
+    </div>
+
+    <!-- Thanh điều khiển -->
+    <div class="d-flex align-items-center gap-4" style="margin-top: 10px; z-index: 5; position: relative">
+      <button id="btn-prev-card" class="btn btn-outline-primary rounded-circle p-3 bg-white shadow-sm">
+        <i class="bx bx-chevron-left fs-4"></i>
+      </button>
+
+      <!-- BẮT ĐẦU ĐOẠN ĐÃ ĐƯỢC CHỈNH SỬA THÀNH DROPDOWN -->
+      <div class="dropdown text-center bg-white px-4 py-2 rounded-pill shadow-sm border" style="cursor: pointer"
+        data-bs-toggle="dropdown" data-bs-display="static" title="Nhấn để chọn nhanh thẻ">
+        <div class="d-flex align-items-center justify-content-center user-select-none">
+          <span id="study-progress" class="fw-bold fs-5 text-primary">0 / 0</span>
+          <!-- Đã đổi icon thành chevron-down -->
+          <i class="bx bx-chevron-down text-primary ms-2 fs-5"></i>
+        </div>
+        <!-- Menu thả xuống -->
+        <ul class="dropdown-menu dropdown-menu-center shadow border-0 rounded-3 mt-2" id="quick-select-dropdown"
+          style="max-height: 150px; overflow-y: auto">
+          <!-- Javascript sẽ tự động sinh các thẻ <li> vào đây -->
+        </ul>
+      </div>
+      <!-- KẾT THÚC ĐOẠN CHỈNH SỬA -->
+
+      <button id="btn-next-card" class="btn btn-outline-primary rounded-circle p-3 bg-white shadow-sm">
+        <i class="bx bx-chevron-right fs-4"></i>
+      </button>
+    </div>
+  </main>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  <script th:src="@{/js/study_flashcard.js}"></script>
+</body>
+
+</html>

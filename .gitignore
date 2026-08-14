@@ -80,5 +80,9 @@ Danh_sach_file_*.txt
 docs/gom_code_*.txt
 docs/Danh_sach_file_*.txt
 
+# --- Custom: Ignore TXT_Code Directory and All .txt Files ---
+TXT_Code/
+*.txt
+
 # --- Custom: Ignore Application Properties (Sensitive Configuration) ---
 application.properties

@@ -7,9 +7,10 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
     <link href="https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css" rel="stylesheet" />
     <link rel="stylesheet" th:href="@{/css/settings.css}">
+    <link rel="stylesheet" th:href="@{/css/toast.css}">
 </head>
 <body>
-    <!-- Thanh tiêu đề thu gọn thay thế Navbar -->
+    <!-- Thanh tiêu đề -->
     <div class="bg-white border-bottom px-4 py-3 d-flex justify-content-between align-items-center shadow-sm">
         <h4 class="fw-bold m-0 d-flex align-items-center">
             <i class="bx bx-cog text-primary me-2"></i> Cài đặt hệ thống
@@ -20,35 +21,171 @@
     </div>
 
     <div class="settings-layout">
-        <!-- Sidebar bên trái cho phần cài đặt -->
+        <!-- Sidebar bên trái -->
         <div class="settings-sidebar">
             <h6 class="fw-bold mb-3 text-secondary px-2 text-uppercase fs-7">Danh mục</h6>
-            <div class="d-flex flex-column">
-                <a href="#account" class="settings-nav-link active"><i class="bx bx-user-circle fs-5"></i> Quản lý tài khoản</a>
-                <a href="#security" class="settings-nav-link"><i class="bx bx-lock fs-5"></i> Bảo mật & Mật khẩu</a>
-                <a href="#preferences" class="settings-nav-link"><i class="bx bx-slider fs-5"></i> Tuỳ chỉnh giao diện</a>
+            <div class="d-flex flex-column gap-1">
+                <a href="#account" class="settings-nav-link active" data-tab="account">
+                    <i class="bx bx-user-circle fs-5"></i> Quản lý tài khoản
+                </a>
+                <a href="#security" class="settings-nav-link" data-tab="security">
+                    <i class="bx bx-lock fs-5"></i> Bảo mật & Mật khẩu
+                </a>
+                <a href="#preferences" class="settings-nav-link" data-tab="preferences">
+                    <i class="bx bx-slider fs-5"></i> Tùy chỉnh học tập
+                </a>
             </div>
         </div>
 
-        <!-- Nội dung chính bên phải -->
+        <!-- Nội dung chính: Chia lưới 2 cột chống trống -->
         <div class="settings-content">
-            <div class="card border-0 shadow-sm rounded-4 p-4 max-w-lg bg-white" style="max-width: 600px;">
-                <h3 class="fw-bold mb-3">Thông tin tài khoản</h3>
-                <p class="text-muted mb-4">Quản lý thông tin cá nhân và định danh của bạn trên hệ thống.</p>
-                
-                <div class="mb-3">
-                    <label class="form-label fw-semibold text-muted small">Tên tài khoản (Username)</label>
-                    <input type="text" class="form-control bg-light border-0" th:value="${#authentication.name}" readonly />
+            <div class="container-fluid px-0">
+                <div class="row g-4">
+                    <!-- Cột 1: Form theo từng Tab (Chiếm 7 phần) -->
+                    <div class="col-12 col-xl-7">
+                        <!-- TAB 1: QUẢN LÝ TÀI KHOẢN -->
+                        <div id="tab-account" class="settings-tab-panel">
+                            <div class="card border-0 shadow-sm rounded-4 p-4 bg-white">
+                                <h4 class="fw-bold mb-1">Thông tin tài khoản</h4>
+                                <p class="text-muted small mb-4">Quản lý hồ sơ cá nhân và hình đại diện trên hệ thống.</p>
+                                
+                                <!-- Chọn Avatar -->
+                                <div class="mb-4">
+                                    <label class="form-label fw-semibold text-muted small d-block">Chọn linh vật đại diện</label>
+                                    <div class="avatar-picker-grid" id="avatar-picker-list"></div>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label class="form-label fw-semibold text-muted small">Tên tài khoản (Username)</label>
+                                    <input type="text" id="setting-username" class="form-control bg-light border-0 fw-semibold" readonly />
+                                </div>
+
+                                <div class="mb-4">
+                                    <label class="form-label fw-semibold text-muted small">Địa chỉ Email</label>
+                                    <input type="email" id="setting-email" class="form-control bg-light border-0" placeholder="Nhập email của bạn..." />
+                                </div>
+
+                                <button type="button" id="btn-save-profile" class="btn btn-primary rounded-pill px-4 fw-bold">
+                                    <i class="bx bx-save me-1"></i> Lưu thông tin
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- TAB 2: BẢO MẬT & MẬT KHẨU -->
+                        <div id="tab-security" class="settings-tab-panel d-none">
+                            <div class="card border-0 shadow-sm rounded-4 p-4 bg-white">
+                                <h4 class="fw-bold mb-1">Bảo mật & Mật khẩu</h4>
+                                <p class="text-muted small mb-4">Cập nhật mật khẩu định kỳ để bảo vệ tài khoản tốt nhất.</p>
+
+                                <div class="mb-3">
+                                    <label class="form-label fw-semibold text-muted small">Mật khẩu hiện tại</label>
+                                    <input type="password" id="current-password" class="form-control bg-light border-0" placeholder="Nhập mật khẩu đang dùng..." />
+                                </div>
+
+                                <div class="mb-3">
+                                    <label class="form-label fw-semibold text-muted small">Mật khẩu mới</label>
+                                    <input type="password" id="new-password" class="form-control bg-light border-0" placeholder="Tối thiểu 6 ký tự..." />
+                                </div>
+
+                                <div class="mb-4">
+                                    <label class="form-label fw-semibold text-muted small">Xác nhận mật khẩu mới</label>
+                                    <input type="password" id="confirm-new-password" class="form-control bg-light border-0" placeholder="Nhập lại mật khẩu mới..." />
+                                </div>
+
+                                <button type="button" id="btn-change-password" class="btn btn-primary rounded-pill px-4 fw-bold">
+                                    <i class="bx bx-check-shield me-1"></i> Đổi mật khẩu
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- TAB 3: TÙY CHỈNH HỌC TẬP -->
+                        <div id="tab-preferences" class="settings-tab-panel d-none">
+                            <div class="card border-0 shadow-sm rounded-4 p-4 bg-white">
+                                <h4 class="fw-bold mb-1">Tùy chỉnh học tập & Giọng đọc</h4>
+                                <p class="text-muted small mb-4">Thiết lập trải nghiệm phát âm và lật thẻ Flashcard phù hợp với bạn.</p>
+
+                                <div class="mb-3">
+                                    <label class="form-label fw-semibold text-muted small">Giọng phát âm mặc định</label>
+                                    <select id="pref-voice-lang" class="form-select bg-light border-0">
+                                        <option value="en-US">🇺🇸 Tiếng Anh - Mỹ (English US)</option>
+                                        <option value="en-GB">🇬🇧 Tiếng Anh - Anh (English UK)</option>
+                                    </select>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label class="form-label fw-semibold text-muted small">Tốc độ đọc giọng mẫu</label>
+                                    <select id="pref-voice-rate" class="form-select bg-light border-0">
+                                        <option value="0.9">Bình thường (Chuẩn 0.9x)</option>
+                                        <option value="0.75">Hơi chậm (0.75x)</option>
+                                        <option value="0.6">Chậm rõ từng âm (0.6x)</option>
+                                    </select>
+                                </div>
+
+                                <div class="mb-4">
+                                    <div class="form-check form-switch mt-2">
+                                        <input class="form-check-input" type="checkbox" id="pref-auto-speak" style="cursor: pointer;">
+                                        <label class="form-check-label fw-semibold text-dark ms-2" for="pref-auto-speak" style="cursor: pointer;">
+                                            Tự động phát âm thanh khi lật thẻ xem chi tiết
+                                        </label>
+                                    </div>
+                                </div>
+
+                                <button type="button" id="btn-save-preferences" class="btn btn-primary rounded-pill px-4 fw-bold">
+                                    <i class="bx bx-slider-alt me-1"></i> Lưu tùy chỉnh
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Cột 2: Card Thống kê & Profile Tóm tắt (Chiếm 5 phần) -->
+                    <div class="col-12 col-xl-5">
+                        <div class="card border-0 shadow-sm rounded-4 p-4 bg-white text-center mb-4">
+                            <div class="d-flex justify-content-center mb-3">
+                                <div id="summary-avatar" class="avatar-hero shadow-sm">🦊</div>
+                            </div>
+                            <h5 class="fw-bold mb-1" id="summary-username">Long123</h5>
+                            <p class="text-muted small mb-3" id="summary-email">vohuylong12393@gmail.com</p>
+                            <div class="d-inline-flex align-items-center justify-content-center gap-1 badge bg-success-subtle text-success rounded-pill px-3 py-2 mx-auto">
+                                <i class="bx bx-check-circle fs-6"></i> Tài khoản đã kích hoạt
+                            </div>
+
+                            <hr class="my-4 text-muted opacity-25">
+
+                            <!-- Khối thống kê học tập -->
+                            <div class="row g-2 text-center">
+                                <div class="col-6">
+                                    <div class="p-3 bg-light rounded-3">
+                                        <span class="text-muted small d-block mb-1">Bộ thẻ sở hữu</span>
+                                        <h4 class="fw-bold text-primary m-0" id="stat-topics-count">0</h4>
+                                    </div>
+                                </div>
+                                <div class="col-6">
+                                    <div class="p-3 bg-light rounded-3">
+                                        <span class="text-muted small d-block mb-1">Tổng từ vựng</span>
+                                        <h4 class="fw-bold text-success m-0" id="stat-vocab-count">0</h4>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Card Mẹo sử dụng -->
+                        <div class="card border-0 shadow-sm rounded-4 p-4 bg-primary text-white">
+                            <div class="d-flex align-items-center gap-2 mb-2">
+                                <i class="bx bx-bulb fs-4"></i>
+                                <h6 class="fw-bold m-0">Mẹo học Flashcard</h6>
+                            </div>
+                            <p class="small opacity-75 mb-0" style="line-height: 1.6;">
+                                Kết hợp việc nghe phát âm mẫu và tạo ngữ cảnh qua Chat AI sẽ giúp não bộ ghi nhớ từ vựng lâu hơn 40% so với học thuộc thông thường.
+                            </p>
+                        </div>
+                    </div>
                 </div>
-                <div class="mb-4">
-                    <label class="form-label fw-semibold text-muted small">Trạng thái bảo mật</label>
-                    <input type="text" class="form-control bg-light border-0 text-success fw-semibold" value="Đã xác thực & Đang hoạt động" readonly />
-                </div>
-                <button class="btn btn-primary rounded-pill px-4 fw-bold">Lưu thay đổi</button>
             </div>
         </div>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script th:src="@{/js/toast.js}"></script>
+    <script th:src="@{/js/settings.js}"></script>
 </body>
 </html>
