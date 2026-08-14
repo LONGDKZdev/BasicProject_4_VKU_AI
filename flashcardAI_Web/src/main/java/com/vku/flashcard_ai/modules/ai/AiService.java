@@ -55,7 +55,7 @@ public class AiService {
         }
 
         try {
-            String url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent";
+            String url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent";
             
             RestTemplate restTemplate = new RestTemplate();
             HttpHeaders headers = new HttpHeaders();
@@ -120,10 +120,15 @@ public class AiService {
             if (response.getStatusCode() == HttpStatus.OK && response.getBody() != null) {
                 return extractTextFromGeminiResponse(response.getBody());
             }
+        } catch (org.springframework.web.client.HttpServerErrorException.ServiceUnavailable e) {
+            System.err.println(" Gemini API 503: Máy chủ AI đang quá tải tạm thời.");
+            return " Máy chủ AI hiện đang bận do lượng truy cập cao. Vui lòng bấm gửi lại sau vài giây!";
         } catch (Exception e) {
             e.printStackTrace();
-            return "Lỗi khi gọi Gemini API: " + e.getMessage();
+            return " Lỗi khi kết nối với AI: " + e.getMessage();
         }
+
+        
 
         return "{}";
     }

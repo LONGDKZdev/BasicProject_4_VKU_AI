@@ -1,19 +1,3 @@
-/* Tổng thể Navbar với hiệu ứng chuyển màu nhẹ nhàng */
-.custom-navbar {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    height: 85px;
-    padding: 0 50px;
-    background: linear-gradient(135deg, #ffffff 0%, #fcf8f2 100%);
-    border-bottom: 2px solid #eae2d8;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.04);
-    position: sticky;
-    top: 0;
-    z-index: 1000;
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    transition: all 0.3s ease;
-}
 
 /* Khối Logo bên trái có hiệu ứng phóng nhẹ khi hover */
 .nav-logo a {
@@ -93,19 +77,65 @@
     cursor: pointer;
 }
 
-.account-dropdown-toggle {
+/* Tổng thể Navbar với hiệu ứng chuyển màu nhẹ nhàng */
+.custom-navbar {
     display: flex;
     align-items: center;
-    color: #333333;
-    padding: 8px;
-    border-radius: 50%;
+    justify-content: space-between;
+    height: 90px;
+    padding: 0 50px;
+    background: linear-gradient(135deg, #ffffff 0%, #fcf8f2 100%);
+    border-bottom: 2px solid #eae2d8;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.04);
+    position: sticky;
+    top: 0;
+    z-index: 1000;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    transition: all 0.3s ease;
+}
+
+
+/* PHÓNG TO KHỐI NÚT TÀI KHOẢN & AVATAR EMOJI */
+.account-dropdown-toggle {
+    display: flex !important;
+    align-items: center !important;
+    gap: 10px !important;
+    padding: 6px 14px !important;
+    border-radius: 28px !important;
+    background-color: #ffffff;
+    border: 1.5px solid #e2e8f0;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+    cursor: pointer;
     transition: all 0.25s ease;
 }
 
 .account-dropdown-toggle:hover {
-    background-color: #f2eae1;
+    background-color: #f8fafc;
+    border-color: #cbd5e1;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+.nav-avatar-circle {
+    width: 40px !important;
+    height: 40px !important;
+    border-radius: 50%;
+    background-color: #f1f5f9;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px !important;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+}
+
+.nav-gear-icon {
+    font-size: 22px !important;
+    color: #64748b;
+    transition: transform 0.3s ease, color 0.2s ease;
+}
+
+.account-dropdown-toggle:hover .nav-gear-icon {
+    transform: rotate(60deg);
     color: #0d6efd;
-    transform: rotate(8deg);
 }
 
 /* Hiệu ứng Dropdown xuất hiện mượt mà (Fade In & Slide Down) */

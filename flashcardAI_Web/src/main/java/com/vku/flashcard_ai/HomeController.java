@@ -2,6 +2,7 @@ package com.vku.flashcard_ai; // Hoặc package tương ứng của bạn
 
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 
 @Controller
 public class HomeController {
@@ -34,5 +35,10 @@ public class HomeController {
     @GetMapping("/settings")
     public String settingsPage() {
         return "settings";
+    }
+    @GetMapping("/reset-password")
+    public String resetPasswordPage(@RequestParam(name = "username", required = false) String username, org.springframework.ui.Model model) {
+        model.addAttribute("username", username != null ? username : "");
+        return "reset-password";
     }
 }

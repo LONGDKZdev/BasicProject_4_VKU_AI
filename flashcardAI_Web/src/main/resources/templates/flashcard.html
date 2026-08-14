@@ -18,55 +18,111 @@
   <!-- Chèn thanh điều hướng -->
   <div th:replace="~{fragments/navbar :: main-nav}"></div>
 
-  <div class="main-container">
-    <div class="main-content">
-      <div class="container-fluid" id="flashcard-container">
-        <!-- Tiêu đề và Nút chức năng -->
-        <div class="row mb-4">
-          <div class="col-12 d-flex justify-content-between align-items-center flex-wrap gap-3">
-            <h4 class="fw-bold m-0 d-flex align-items-center">
-              <i class="bx bxs-carousel text-primary me-2" style="font-size: 28px"></i>
-              Lật thẻ (Flashcard)
-            </h4>
-            <div class="d-flex align-items-center gap-2">
-              <button class="btn btn-primary rounded-pill fw-semibold d-flex align-items-center" data-bs-toggle="modal"
-                data-bs-target="#addTopicModal">
-                <i class="bx bx-plus me-1"></i> Thêm Chủ đề
-              </button>
-              <button class="btn btn-primary rounded-circle d-flex align-items-center justify-content-center"
-                style="width: 38px; height: 38px" data-bs-toggle="modal" data-bs-target="#helpFlashcardModal"
-                title="Hướng dẫn">
-                <i class="bx bx-question-mark"></i>
-              </button>
+  <div class="main-container py-4 px-4 px-lg-5">
+    <div class="container-fluid" id="flashcard-container">
+      
+      <!-- BỐ CỤC 2 CỘT: TRÁI (QUẢN LÝ CHỦ ĐỀ) - PHẢI (DASHBOARD TỔNG QUAN) -->
+      <div class="row g-4">
+        
+        <!-- CỘT TRÁI: DANH SÁCH CHỦ ĐỀ (Chiếm 7/12 cột ở màn hình lớn) -->
+        <div class="col-12 col-xl-8">
+          <div class="card shadow-sm border-0 rounded-4 p-3 bg-white mb-3">
+            <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+              <h5 class="fw-bold m-0 d-flex align-items-center text-dark">
+                <i class="bx bx-collection text-primary me-2 fs-4"></i> Bộ từ vựng của bạn
+              </h5>
+              <div class="d-flex align-items-center gap-2">
+                <button class="btn btn-primary rounded-pill fw-semibold btn-sm px-3 d-flex align-items-center" data-bs-toggle="modal" data-bs-target="#addTopicModal">
+                  <i class="bx bx-plus me-1"></i> Thêm Chủ đề
+                </button>
+                <button class="btn btn-light rounded-circle d-flex align-items-center justify-content-center border" style="width: 32px; height: 32px" data-bs-toggle="modal" data-bs-target="#helpFlashcardModal" title="Hướng dẫn">
+                  <i class="bx bx-question-mark text-muted"></i>
+                </button>
+              </div>
+            </div>
+
+            <!-- Thanh tìm kiếm nhanh theo tên chủ đề -->
+            <div class="input-group mb-3">
+              <span class="input-group-text bg-light border-0"><i class="bx bx-search text-muted"></i></span>
+              <input type="text" id="topic-search-input" class="form-control bg-light border-0 small" placeholder="Tìm kiếm bộ thẻ từ vựng..." />
+            </div>
+
+            <!-- Danh sách lưới thẻ thu gọn (Row cols 1 trên mobile, 2 trên tablet/desktop) -->
+            <div id="topics-list" class="row row-cols-1 row-cols-md-2 g-3"></div>
+            
+            <div id="topics-empty" class="text-center text-muted py-5">
+              <i class="bx bx-folder-open fs-1 mb-2 opacity-50"></i>
+              <p class="m-0">Chưa có chủ đề từ vựng nào. Hãy tạo bộ từ đầu tiên của bạn!</p>
             </div>
           </div>
         </div>
 
-        <!-- Danh sách chủ đề -->
-        <div id="topics-section" class="row mb-4">
-          <div class="col-12">
-            <div class="card shadow-sm border-0 rounded-3">
-              <div class="card-header bg-white border-0 d-flex justify-content-between align-items-center">
-                <h5 class="fw-bold m-0">
-                  <i class="bx bx-collection text-primary me-2"></i>Danh sách chủ đề từ vựng tiếng Anh
-                </h5>
-              </div>
-              <div class="card-body">
-                <div id="topics-list" class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-3">
-                  <!-- Thẻ chủ đề sẽ được render ở đây -->
+        <!-- CỘT PHẢI: DASHBOARD TỔNG QUAN & ĐIỀU HƯỚNG NHANH (Chiếm 4/12 cột) -->
+        <div class="col-12 col-xl-4">
+          
+          <!-- Box 1: Nút tiếp tục học gần nhất (Quick Resume) -->
+          <div class="card border-0 shadow-sm rounded-4 p-4 bg-white mb-3" id="resume-card-box" style="display: none;">
+            <span class="text-muted small fw-bold text-uppercase d-block mb-1">Tiếp tục học</span>
+            <h5 class="fw-bold text-dark text-truncate mb-2" id="resume-topic-title">Tên bộ thẻ</h5>
+            <div class="d-flex justify-content-between align-items-center">
+              <span class="text-muted small" id="resume-topic-info"><i class="bx bx-layer me-1"></i> Đang học dở</span>
+              <button class="btn btn-sm btn-primary rounded-pill px-3 fw-semibold" id="btn-quick-resume">
+                Học ngay <i class="bx bx-right-arrow-alt"></i>
+              </button>
+            </div>
+          </div>
+
+          <!-- Box 2: Tổng quan tri thức & Thống kê -->
+          <div class="card border-0 shadow-sm rounded-4 p-4 bg-white mb-3">
+            <h6 class="fw-bold text-dark mb-3"><i class="bx bx-bar-chart-alt-2 text-primary me-2"></i> Tổng quan học tập</h6>
+            <div class="row g-2 text-center mb-3">
+              <div class="col-6">
+                <div class="p-3 bg-light rounded-3">
+                  <span class="text-muted small d-block mb-1">Tổng số bộ thẻ</span>
+                  <h4 class="fw-bold text-primary m-0" id="dash-topics-count">0</h4>
                 </div>
-                <div id="topics-empty" class="text-center text-muted py-5">
-                  <i class="bx bx-folder-open fs-1 mb-2 opacity-50"></i>
-                  <p>Chưa có chủ đề từ vựng nào. Hãy tạo bộ từ đầu tiên của bạn!</p>
+              </div>
+              <div class="col-6">
+                <div class="p-3 bg-light rounded-3">
+                  <span class="text-muted small d-block mb-1">Tổng từ vựng</span>
+                  <h4 class="fw-bold text-success m-0" id="dash-vocab-count">0</h4>
                 </div>
               </div>
             </div>
+            <!-- Box Trạng thái hoạt động (Tối ưu nhẹ & Rõ ràng) -->
+            <div class="p-3 bg-light rounded-3">
+              <div class="d-flex justify-content-between align-items-center mb-2">
+                <span class="small fw-bold text-dark"><i class="bx bx-check-shield text-success me-1"></i> Trạng thái hoạt động</span>
+                <span class="badge bg-success-subtle text-success rounded-pill px-2" id="dash-ready-ratio">0/0 Đã sẵn sàng</span>
+              </div>
+              <div class="progress" style="height: 6px;">
+                <div class="progress-bar bg-success" id="dash-ready-progress-bar" role="progressbar" style="width: 0%"></div>
+              </div>
+              <small class="text-muted d-block mt-2" style="font-size: 12px;" id="dash-status-text">
+                Tất cả các bộ thẻ đã nạp từ vựng và sẵn sàng học.
+              </small>
+            </div>
+
+          <!-- Box 3: Từ vựng ngẫu nhiên hôm nay (Word Spotlight) -->
+          <div class="card border-0 shadow-sm rounded-4 p-4 bg-white" id="spotlight-card-box">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+              <span class="badge bg-warning text-dark rounded-pill px-2 py-1"><i class="bx bx-bulb me-1"></i> Khám phá từ</span>
+              <button class="btn btn-sm p-0 border-0 text-muted" id="btn-refresh-spotlight" title="Đổi từ khác"><i class="bx bx-refresh fs-5"></i></button>
+            </div>
+            <div id="spotlight-content">
+              <h4 class="fw-bold text-primary mb-1" id="spotlight-eng">Vocabulary</h4>
+              <p class="text-muted small mb-2" id="spotlight-pos-ipa">/(n) phiên âm/</p>
+              <p class="fw-semibold text-dark mb-2" id="spotlight-vie">Nghĩa tiếng Việt</p>
+              <div class="p-2 bg-light rounded-3 small text-secondary fst-italic" id="spotlight-example">"Ví dụ minh họa..."</div>
+            </div>
           </div>
+
         </div>
       </div>
     </div>
   </div>
 
+  <!-- GIỮ NGUYÊN 100% CÁC MODAL CŨ BÊN DƯỚI -->
   <!-- Modal: Thêm Chủ đề -->
   <div class="modal fade" id="addTopicModal" tabindex="-1">
     <div class="modal-dialog modal-dialog-centered">
@@ -116,15 +172,15 @@
     </div>
   </div>
 
-  <!-- Modal: Chỉnh sửa chủ đề -->
+  <!-- Modal: Chỉnh sửa chủ đề (Cố định chiều cao & Cuộn nội dung bên trong) -->
   <div class="modal fade" id="editTopicModal" tabindex="-1">
-    <div class="modal-dialog modal-dialog-centered" style="max-width: 900px">
-      <div class="modal-content border-0 rounded-4 shadow" style="height: 700px">
-        <div class="modal-header border-bottom-0 pb-0">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+      <div class="modal-content border-0 rounded-4 shadow" style="max-height: 85vh; display: flex; flex-direction: column;">
+        <div class="modal-header border-bottom-0 pb-2">
           <h5 class="modal-title fw-bold">Chỉnh sửa chủ đề</h5>
           <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
         </div>
-        <div class="modal-body">
+        <div class="modal-body pt-0" style="overflow-y: auto; flex: 1;">
           <div class="mb-3">
             <div class="d-flex justify-content-between align-items-center mb-1">
               <label class="form-label fw-semibold text-muted small mb-0">Tên chủ đề</label>
@@ -140,14 +196,15 @@
             <label class="form-label fw-semibold text-muted small">Màu sắc chủ đề</label>
             <div id="color-picker-container" class="color-picker-wrapper"></div>
           </div>
-          <div class="mb-3">
+          <div class="mb-2">
             <label class="form-label fw-semibold text-muted small">Dữ liệu từ vựng (JSON)</label>
-            <textarea id="edit-topic-data" class="form-control bg-light border-0 font-monospace" rows="16"></textarea>
+            <!-- Khóa không cho kéo dãn tự do (resize: vertical) và gán max-height cố định -->
+            <textarea id="edit-topic-data" class="form-control bg-light border-0 font-monospace" style="height: 240px; max-height: 300px; resize: none;" placeholder="Dán dữ liệu JSON từ vựng vào đây..."></textarea>
           </div>
         </div>
-        <div class="modal-footer border-top-0 pt-0">
-          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Hủy</button>
-          <button type="button" id="btn-save-edit" class="btn btn-primary rounded-pill">Lưu thay đổi</button>
+        <div class="modal-footer border-top-0 pt-2 pb-3 px-4">
+          <button type="button" class="btn btn-outline-secondary rounded-pill px-4" data-bs-dismiss="modal">Hủy</button>
+          <button type="button" id="btn-save-edit" class="btn btn-primary rounded-pill px-4 fw-bold">Lưu thay đổi</button>
         </div>
       </div>
     </div>

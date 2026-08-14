@@ -58,3 +58,26 @@
     opacity: 0;
   }
 }
+
+/* Tùy chỉnh nút ẩn/hiện mật khẩu trong Bootstrap Input-Group */
+.input-group .password-toggle-btn {
+    background-color: var(--bs-tertiary-bg, #f8f9fa);
+    border: none;
+    cursor: pointer;
+    color: #64748b;
+    font-size: 20px;
+    display: flex;
+    align-items: center;
+    padding: 0 12px;
+    transition: color 0.2s ease;
+}
+
+.input-group .password-toggle-btn:hover {
+    color: #0d6efd;
+}
+
+/* Ẩn con mắt mặc định tự sinh của Edge / Chrome */
+input[type="password"]::-ms-reveal,
+input[type="password"]::-ms-clear {
+    display: none;
+}

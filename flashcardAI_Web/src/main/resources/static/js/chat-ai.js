@@ -144,11 +144,17 @@ document.addEventListener('DOMContentLoaded', function () {
                     if (window.showToast) window.showToast("Đã sao chép JSON vào bộ nhớ đệm!", "success");
                 }
             }
-            // 2. Nút Thêm trực tiếp vào Flashcard (Chống Spam & Lọc trùng)
+            // 2. Nút Thêm trực tiếp vào Flashcard (Tự unescape và gắn đúng editTopicId)
             else if (e.target.closest('.add-flashcard-btn')) {
                 const addBtn = e.target.closest('.add-flashcard-btn');
                 const msgEl = e.target.closest('.message');
-                const rawText = msgEl.getAttribute('data-raw');
+                
+                // Lấy nội dung text thuần bên trong .message-text để không bị dính HTML entities (&quot;)
+                const textEl = msgEl.querySelector('.message-text');
+                let rawText = textEl ? textEl.innerText.trim() : (msgEl.getAttribute('data-raw') || "");
+
+                // Dọn dẹp sơ bộ để đảm bảo trả về dấu ngoặc kép JSON chuẩn
+                rawText = rawText.replace(/&quot;/g, '"').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>');
 
                 const activeTopicId = currentTopicId || urlParams.get('topicId');
 
@@ -176,8 +182,12 @@ document.addEventListener('DOMContentLoaded', function () {
                         if (window.showToast) {
                             const isWarning = messageText.includes("Đã bỏ qua") || messageText.includes("đã tồn tại");
                             const toastType = isWarning ? "warning" : "success";
-                            // Nút chuyển hướng mở thẳng giao diện Flashcard
-                            window.showToast(`${messageText} <a href='/' class='text-white text-decoration-underline fw-bold ms-2'>Tới Flashcard <i class='bx bx-right-arrow-alt'></i></a>`, toastType);
+                            
+                            // GẮN THAM SỐ editTopicId ĐỂ KHI CLICK SẼ MỞ THẲNG MODAL CHỈNH SỬA
+                            window.showToast(
+                                `${messageText} <a href='/?editTopicId=${encodeURIComponent(activeTopicId)}' class='text-white text-decoration-underline fw-bold ms-2'>Mở chỉnh sửa <i class='bx bx-right-arrow-alt'></i></a>`, 
+                                toastType
+                            );
                         }
                     } else {
                         if (window.showToast) window.showToast("Lỗi khi thêm từ vựng vào Flashcard!", "danger");
@@ -186,7 +196,6 @@ document.addEventListener('DOMContentLoaded', function () {
                     console.error("Lỗi:", err);
                     if (window.showToast) window.showToast("Lỗi hệ thống kết nối!", "danger");
                 } finally {
-                    // MỞ KHÓA NÚT SAU KHI XỬ LÝ
                     setTimeout(() => {
                         addBtn.disabled = false;
                         addBtn.style.pointerEvents = 'auto';
@@ -240,17 +249,35 @@ document.addEventListener('DOMContentLoaded', function () {
             const item = wrapper.querySelector('.history-item');
             const chatId = item.getAttribute('data-id');
             const oldTitle = item.textContent.trim();
-            const newTitle = prompt("Nhập tên mới cho đoạn chat:", oldTitle);
 
-            if (newTitle && newTitle.trim() !== "" && newTitle !== oldTitle) {
-                await fetch('/api/ai/chat/rename', {
-                    method: 'PUT',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ chatId: chatId, title: newTitle.trim() })
-                });
-                if (window.showToast) window.showToast("Đã đổi tên thành công!", "success");
-                loadChatHistories();
-            }
+            const renameModalEl = document.getElementById("renameChatModal");
+            const renameInput = document.getElementById("renameChatInput");
+            const btnSaveRename = document.getElementById("btnConfirmRenameChat");
+            const modalInstance = bootstrap.Modal.getInstance(renameModalEl) || new bootstrap.Modal(renameModalEl);
+
+            renameInput.value = oldTitle;
+
+            const newBtnSave = btnSaveRename.cloneNode(true);
+            btnSaveRename.parentNode.replaceChild(newBtnSave, btnSaveRename);
+
+            newBtnSave.addEventListener("click", async () => {
+                const newTitle = renameInput.value.trim();
+                if (newTitle && newTitle !== oldTitle) {
+                    modalInstance.hide();
+                    await fetch('/api/ai/chat/rename', {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ chatId: chatId, title: newTitle })
+                    });
+                    if (window.showToast) window.showToast("Đã đổi tên thành công!", "success");
+                    loadChatHistories();
+                } else {
+                    modalInstance.hide();
+                }
+            });
+
+            modalInstance.show();
+            setTimeout(() => renameInput.focus(), 300);
             e.stopPropagation();
         }
         else if (e.target.closest('.delete-btn')) {
@@ -258,7 +285,16 @@ document.addEventListener('DOMContentLoaded', function () {
             const item = wrapper.querySelector('.history-item');
             const chatId = item.getAttribute('data-id');
 
-            if (confirm("Bạn có chắc chắn muốn xóa đoạn chat này?")) {
+            // Mở Modal xác nhận Bootstrap thay cho confirm()
+            const confirmModalEl = document.getElementById("confirmChatModal");
+            const modalInstance = bootstrap.Modal.getInstance(confirmModalEl) || new bootstrap.Modal(confirmModalEl);
+            const btnConfirm = document.getElementById("btnConfirmDeleteChat");
+
+            const newBtnConfirm = btnConfirm.cloneNode(true);
+            btnConfirm.parentNode.replaceChild(newBtnConfirm, btnConfirm);
+
+            newBtnConfirm.addEventListener("click", async () => {
+                modalInstance.hide();
                 await fetch(`/api/ai/chat/${chatId}`, { method: 'DELETE' });
                 if (currentChatId === chatId) {
                     currentChatId = null;
@@ -269,7 +305,9 @@ document.addEventListener('DOMContentLoaded', function () {
                 }
                 if (window.showToast) window.showToast("Đã xóa đoạn chat!", "success");
                 loadChatHistories();
-            }
+            });
+
+            modalInstance.show();
             e.stopPropagation();
         }
         else if (e.target.classList.contains('group-icon')) {

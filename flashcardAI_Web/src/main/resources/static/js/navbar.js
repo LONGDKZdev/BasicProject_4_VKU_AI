@@ -1,5 +1,25 @@
 document.addEventListener('DOMContentLoaded', function () {
-    // --- 1. Xử lý Dropdown Tài khoản ---
+    const AVATAR_ICONS = {
+        avatar_0: "👤", // Avatar mặc định
+        avatar_1: "🦊", avatar_2: "🐱", avatar_3: "🦉", avatar_4: "🤖", avatar_5: "🐼",
+        avatar_6: "🦁", avatar_7: "🐯", avatar_8: "🐶", avatar_9: "🦄", avatar_10: "🐧",
+        avatar_11 : "🐸"
+    };
+
+    const navAvatarEl = document.getElementById('nav-avatar-icon');
+    if (navAvatarEl) {
+        fetch('/api/settings/profile')
+            .then(res => res.ok ? res.json() : null)
+            .then(user => {
+                const key = (user && user.avatarKey) ? user.avatarKey : "avatar_0";
+                navAvatarEl.textContent = AVATAR_ICONS[key] || "👤";
+            })
+            .catch(() => {
+                navAvatarEl.textContent = "👤";
+            });
+    }
+
+    // Các phần xử lý Dropdown và Active tab phía dưới giữ nguyên
     const toggleBtn = document.getElementById('accountDropdownBtn');
     const dropdownMenu = document.getElementById('accountDropdownMenu');
 
@@ -16,20 +36,12 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
-    // --- 2. Xử lý Tự động nhận diện & Lưu trạng thái Tab Active ---
     const navItems = document.querySelectorAll('.nav-item');
     const currentPath = window.location.pathname;
 
     navItems.forEach(item => {
         const itemHref = item.getAttribute('href');
-
-        // Kiểm tra nếu đường dẫn hiện tại chứa href của tab (hoặc trùng khớp tuyệt đối)
-        let isActive = false;
-        if (itemHref === '/' && currentPath === '/') {
-            isActive = true;
-        } else if (itemHref !== '/' && currentPath.includes(itemHref)) {
-            isActive = true;
-        }
+        let isActive = (itemHref === '/' && currentPath === '/') || (itemHref !== '/' && currentPath.includes(itemHref));
 
         if (isActive) {
             navItems.forEach(nav => nav.classList.remove('active'));
@@ -37,13 +49,11 @@ document.addEventListener('DOMContentLoaded', function () {
             localStorage.setItem('activeNavTab', itemHref);
         }
 
-        // Click vào tab nào thì lưu lại tab đó
         item.addEventListener('click', function () {
             localStorage.setItem('activeNavTab', itemHref);
         });
     });
 
-    // Khôi phục lại trạng thái đã lưu từ localStorage nếu có
     const savedTab = localStorage.getItem('activeNavTab');
     if (savedTab) {
         navItems.forEach(item => {

@@ -11,8 +11,8 @@ document.addEventListener("DOMContentLoaded", function () {
         { key: "avatar_7", icon: "🐯", label: "Hổ con" },
         { key: "avatar_8", icon: "🐶", label: "Cún cưng" },
         { key: "avatar_9", icon: "🦄", label: "Kỳ lân" },
-        { key: "avatar_10", icon: "🐧", label: "Chim cánh cụt" }
-
+        { key: "avatar_10", icon: "🐧", label: "Chim cánh cụt" },
+        { key: "avatar_11", icon: "🐸", label: "Ếch xanh" },
 
 
     ];
@@ -208,4 +208,52 @@ document.addEventListener("DOMContentLoaded", function () {
     loadUserProfile();
     loadUserStats();
     loadPreferences();
+
+    // Xử lý Quên mật khẩu & Gửi mail
+    const linkForgotPass = document.getElementById("link-forgot-pass");
+    const forgotModalEl = document.getElementById("forgotPassModal");
+    const forgotModal = forgotModalEl ? new bootstrap.Modal(forgotModalEl) : null;
+    const forgotTargetEmail = document.getElementById("forgot-target-email");
+    const btnSendResetEmail = document.getElementById("btn-send-reset-email");
+
+    if (linkForgotPass && forgotModal) {
+        linkForgotPass.addEventListener("click", function () {
+            const email = inputEmail.value.trim() || summaryEmail.textContent.trim();
+            if (!email || email.includes("Chưa")) {
+                if (window.showToast) window.showToast("Vui lòng cập nhật email trước khi dùng tính năng này!", "warning");
+                return;
+            }
+            forgotTargetEmail.textContent = email;
+            forgotModal.show();
+        });
+    }
+
+    if (btnSendResetEmail) {
+        btnSendResetEmail.addEventListener("click", function () {
+            btnSendResetEmail.disabled = true;
+            const originalText = btnSendResetEmail.innerHTML;
+            btnSendResetEmail.innerHTML = `<i class="bx bx-loader-alt bx-spin me-1"></i> Đang gửi mail...`;
+
+            fetch("/api/settings/forgot-password-mail", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" }
+            })
+                .then(async (res) => {
+                    const msg = await res.text();
+                    if (res.ok) {
+                        if (forgotModal) forgotModal.hide();
+                        if (window.showToast) window.showToast(msg, "success");
+                    } else {
+                        if (window.showToast) window.showToast(msg || "Gửi email thất bại!", "danger");
+                    }
+                })
+                .catch(() => {
+                    if (window.showToast) window.showToast("Lỗi kết nối máy chủ gửi mail!", "danger");
+                })
+                .finally(() => {
+                    btnSendResetEmail.disabled = false;
+                    btnSendResetEmail.innerHTML = originalText;
+                });
+        });
+    }
 });

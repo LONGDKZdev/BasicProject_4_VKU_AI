@@ -10,26 +10,28 @@
                 </a>
             </div>
 
-            <!-- Khối 2: Menu giữa (Trang chủ, ChatAI, Meet) -->
+            <!-- Khối 2: Menu giữa -->
             <nav class="nav-menu">
                 <a href="/" class="nav-item">Trang chủ</a>
                 <a href="/chat-ai" class="nav-item">ChatAI</a>
                 <a href="/meet" class="nav-item">Meet</a>
             </nav>
 
-            <!-- Khối 3: Tài khoản & Dropdown -->
+            <!-- Khối 3: Tài khoản (Avatar Emoji + Bánh răng Dropdown) -->
             <div class="nav-account">
-                <div class="account-dropdown-toggle" id="accountDropdownBtn">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" fill="currentColor" class="bi bi-person-circle" viewBox="0 0 16 16">
-                        <path d="M11 6a3 3 0 1 1-6 0 3 3 0 0 1 6 0z"/>
-                        <path fill-rule="evenodd" d="M0 8a8 8 0 1 1 16 0A8 8 0 0 1 0 8zm8-7a7 7 0 0 0-5.468 11.37C3.242 11.226 4.805 10 8 10s4.757 1.225 5.468 2.37A7 7 0 0 0 8 1z"/>
-                    </svg>
+                <div class="account-dropdown-toggle" id="accountDropdownBtn" title="Tài khoản">
+                    <div id="nav-avatar-icon" class="nav-avatar-circle">🦊</div>
+                    <i class="bx bx-cog nav-gear-icon"></i>
                 </div>
                 <div class="account-dropdown-menu" id="accountDropdownMenu">
-                    <a href="/settings" class="dropdown-item">Cài đặt</a>
+                    <div class="px-3 py-2 border-bottom mb-1">
+                        <span class="d-block fw-bold text-dark text-truncate" id="nav-username-display" th:text="${#authentication.name}">User</span>
+                        <span class="d-block text-muted small">Học viên</span>
+                    </div>
+                    <a href="/settings" class="dropdown-item"><i class="bx bx-slider-alt me-2 text-primary"></i> Cài đặt</a>
                     <div class="dropdown-divider"></div>
                     <form th:action="@{/logout}" method="post" style="margin: 0;">
-                        <button type="submit" class="dropdown-item logout-btn">Đăng xuất</button>
+                        <button type="submit" class="dropdown-item logout-btn"><i class="bx bx-log-out me-2"></i> Đăng xuất</button>
                     </form>
                 </div>
             </div>

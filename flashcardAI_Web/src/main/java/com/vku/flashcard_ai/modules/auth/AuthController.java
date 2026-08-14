@@ -1,9 +1,13 @@
 package com.vku.flashcard_ai.modules.auth;
 
+import java.util.Map;
+
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
 
 @Controller
@@ -46,6 +50,23 @@ public class AuthController {
         } catch (Exception e) {
             model.addAttribute("error", "Đăng ký thất bại: " + e.getMessage());
             return "register";
+        }
+    }
+
+    @PostMapping("/api/auth/reset-password")
+    public ResponseEntity<String> handleResetPassword(@RequestBody Map<String, String> body) {
+        String username = body.get("username");
+        String newPassword = body.get("newPassword");
+
+        if (username == null || newPassword == null || newPassword.length() < 6) {
+            return ResponseEntity.badRequest().body("Dữ liệu không hợp lệ!");
+        }
+
+        try {
+            authService.resetPasswordDirectly(username, newPassword);
+            return ResponseEntity.ok("Đặt lại mật khẩu thành công!");
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body("Lỗi: " + e.getMessage());
         }
     }
 }

@@ -42,8 +42,11 @@
                 <label class="form-label fw-semibold small text-muted">Mật khẩu</label>
                 <div class="input-group">
                     <span class="input-group-text bg-light border-0"><i class="bx bx-lock-alt"></i></span>
-                    <input type="password" name="password" class="form-control bg-light border-0"
+                    <input type="password" id="login-password" name="password" class="form-control bg-light border-0"
                         placeholder="Nhập mật khẩu..." required />
+                    <span class="password-toggle-btn" onclick="togglePasswordVisibility('login-password', this.querySelector('i'))">
+                        <i class="bx bx-hide"></i>
+                    </span>
                 </div>
             </div>
             <button type="submit" class="btn btn-primary w-100 rounded-pill fw-bold py-2 mb-3">
@@ -56,6 +59,9 @@
             </div>
         </form>
     </div>
+    <script th:src="@{/js/auth-helper.js}"></script>
+
 </body>
+
 
 </html>

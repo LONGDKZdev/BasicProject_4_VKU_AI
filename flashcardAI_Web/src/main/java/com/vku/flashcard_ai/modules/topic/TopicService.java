@@ -107,12 +107,17 @@ public class TopicService {
         Topic topic = doc.toObject(Topic.class);
         String existingJson = (topic != null && topic.getDataJson() != null) ? topic.getDataJson().trim() : "[]";
 
-        // 1. Dọn dẹp chuỗi đầu vào
+        // 1. Dọn dẹp chuỗi đầu vào & Giải mã HTML entities nếu có
         String cleanInput = rawInputJson.replaceAll("```json", "").replaceAll("```", "").trim();
+        cleanInput = cleanInput.replace("&quot;", "\"")
+                                .replace("&#34;", "\"")
+                                .replace("&amp;", "&")
+                                .replace("&lt;", "<")
+                                .replace("&gt;", ">")
+                                .replace("&#39;", "'");
+
         if (!cleanInput.startsWith("[")) cleanInput = "[" + cleanInput;
         if (!cleanInput.endsWith("]")) cleanInput = cleanInput + "]";
-
-        // Bổ sung phẩy giữa các ngoặc nhọn nếu bị gõ/dán thiếu
         cleanInput = cleanInput.replaceAll("(?<=\\}\\s*)(?=\\{)", ",");
 
         // 2. Trích xuất mảng từ vựng cũ

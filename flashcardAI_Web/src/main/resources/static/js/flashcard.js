@@ -57,6 +57,7 @@
   let currentTopicId = null;
   let selectedColor = COLORS[0];
   let topics = [];
+  let allVocabularies = [];
 
   document.addEventListener("DOMContentLoaded", function () {
     const elements = {
@@ -65,12 +66,24 @@
       btnGeneratePrompt: document.getElementById("btn-generate-prompt"),
       topicsList: document.getElementById("topics-list"),
       topicsEmpty: document.getElementById("topics-empty"),
+      topicSearchInput: document.getElementById("topic-search-input"),
       editTopicModal: new bootstrap.Modal(document.getElementById("editTopicModal")),
       editTopicName: document.getElementById("edit-topic-name"),
       editTopicData: document.getElementById("edit-topic-data"),
       colorPickerContainer: document.getElementById("color-picker-container"),
       btnSaveEdit: document.getElementById("btn-save-edit"),
-      btnCopyEditPrompt: document.getElementById("btn-copy-edit-prompt")
+      btnCopyEditPrompt: document.getElementById("btn-copy-edit-prompt"),
+      // Dashboard Elements
+      dashTopicsCount: document.getElementById("dash-topics-count"),
+      dashVocabCount: document.getElementById("dash-vocab-count"),
+      resumeCardBox: document.getElementById("resume-card-box"),
+      resumeTopicTitle: document.getElementById("resume-topic-title"),
+      btnQuickResume: document.getElementById("btn-quick-resume"),
+      spotlightEng: document.getElementById("spotlight-eng"),
+      spotlightPosIpa: document.getElementById("spotlight-pos-ipa"),
+      spotlightVie: document.getElementById("spotlight-vie"),
+      spotlightExample: document.getElementById("spotlight-example"),
+      btnRefreshSpotlight: document.getElementById("btn-refresh-spotlight")
     };
 
     renderColorPicker(elements);
@@ -105,12 +118,29 @@
       });
     }
 
+    //HÀM FORMAT TỰ ĐỘNG THAY VÌ CẮT CHUỖI CŨ
+    function formatJsonDisplay(rawJson) {
+      try {
+        let clean = (rawJson || "[]").trim();
+        if (!clean.startsWith("[")) clean = "[" + clean + "]";
+        const parsed = JSON.parse(clean);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          let formatted = JSON.stringify(parsed, null, 2).trim();
+          if (formatted.startsWith("[")) formatted = formatted.substring(1).trim();
+          if (formatted.endsWith("]")) formatted = formatted.substring(0, formatted.length - 1).trim();
+          return formatted;
+        }
+      } catch (e) {}
+      return rawJson || "";
+    }
+
     function loadTopicsFromServer() {
       fetch(API_BASE_URL)
         .then(res => res.json())
         .then(data => {
           topics = data || [];
-          renderTopics();
+          renderTopics(topics);
+          updateDashboard();
 
           const urlParams = new URLSearchParams(window.location.search);
           const autoEditTopicId = urlParams.get("editTopicId");
@@ -121,16 +151,12 @@
               currentTopicId = targetTopic.topicId;
               elements.editTopicName.value = targetTopic.name;
 
-              let displayData = (targetTopic.dataJson || "").trim();
-              if (displayData.startsWith("[")) displayData = displayData.substring(1).trim();
-              if (displayData.endsWith("]")) displayData = displayData.substring(0, displayData.length - 1).trim();
+              // DÙNG HÀM FORMAT TỰ ĐỘNG THAY VÌ CẮT CHUỖI CŨ
+              elements.editTopicData.value = formatJsonDisplay(targetTopic.dataJson);
 
-              elements.editTopicData.value = displayData;
               selectedColor = targetTopic.color || COLORS[0];
               renderColorPicker(elements);
               elements.editTopicModal.show();
-
-              // 🪄 ẨN THAM SỐ URL DƯ THỪA ĐỂ BẢO MẬT & ĐẸP MẮT
               window.history.replaceState({}, document.title, window.location.pathname);
             }
           }
@@ -138,7 +164,105 @@
         .catch(err => console.error("Lỗi tải chủ đề:", err));
     }
 
+    function updateDashboard() {
+      let totalVocab = 0;
+      let validTopicsCount = 0;
+      allVocabularies = [];
+
+      topics.forEach(t => {
+        try {
+          let clean = (t.dataJson || "[]").trim();
+          if (!clean.startsWith("[")) clean = "[" + clean + "]";
+          const list = JSON.parse(clean);
+          if (Array.isArray(list) && list.length > 0) {
+            validTopicsCount++;
+            totalVocab += list.length;
+            list.forEach(v => allVocabularies.push(v));
+          }
+        } catch (e) {}
+      });
+
+      if (elements.dashTopicsCount) elements.dashTopicsCount.textContent = topics.length;
+      if (elements.dashVocabCount) elements.dashVocabCount.textContent = totalVocab;
+
+      // Cập nhật thanh tiến độ hoạt động
+      const readyRatioEl = document.getElementById("dash-ready-ratio");
+      const readyProgressEl = document.getElementById("dash-ready-progress-bar");
+      const statusTextEl = document.getElementById("dash-status-text");
+
+      if (readyRatioEl && readyProgressEl) {
+        const total = topics.length;
+        const percent = total > 0 ? Math.round((validTopicsCount / total) * 100) : 0;
+        readyRatioEl.textContent = `${validTopicsCount}/${total} Hoạt động`;
+        readyProgressEl.style.width = `${percent}%`;
+
+        if (statusTextEl) {
+          if (total === 0) {
+            statusTextEl.textContent = "Chưa có chủ đề nào. Hãy tạo bộ thẻ đầu tiên!";
+          } else if (validTopicsCount === total) {
+            statusTextEl.textContent = "Toàn bộ các chủ đề đã hợp lệ và sẵn sàng học!";
+          } else {
+            statusTextEl.textContent = `Còn ${total - validTopicsCount} chủ đề chưa có dữ liệu từ vựng.`;
+          }
+        }
+      }
+
+      // Thẻ Resume gần nhất & Spotlight giữ nguyên...
+      const savedState = JSON.parse(localStorage.getItem("study-space.flashcard-study.v1") || "null");
+      if (savedState && savedState.topicId) {
+        const lastTopic = topics.find(t => String(t.topicId) === String(savedState.topicId));
+        if (lastTopic && elements.resumeCardBox) {
+          elements.resumeTopicTitle.textContent = lastTopic.name;
+          elements.resumeCardBox.style.display = "block";
+          elements.btnQuickResume.onclick = () => {
+            window.location.href = `/study-flashcard?id=${lastTopic.topicId}`;
+          };
+        }
+      }
+
+      showRandomSpotlight();
+    }
+
+    function showRandomSpotlight() {
+      if (allVocabularies.length === 0) return;
+
+      const spotlightContent = document.getElementById("spotlight-content");
+      const randWord = allVocabularies[Math.floor(Math.random() * allVocabularies.length)];
+
+      if (!spotlightContent || !randWord) return;
+
+      // 1. Thêm class xoay lật úp xuống (rotateX 90deg)
+      spotlightContent.classList.add("flipping");
+
+      // 2. Chờ 250ms khi thẻ đang úp ngang -> Cập nhật text mới
+      setTimeout(() => {
+        if (elements.spotlightEng) {
+          elements.spotlightEng.textContent = randWord.englishVocabulary || randWord.english || "Vocabulary";
+          elements.spotlightPosIpa.textContent = `${randWord.wordPos || "(n)"} ${randWord.pronunciation || ""}`;
+          elements.spotlightVie.textContent = randWord.vietnameseVocabulary || randWord.vietnamese || "Nghĩa tiếng Việt";
+          elements.spotlightExample.textContent = `"${randWord.example || "No example available."}"`;
+        }
+
+        // 3. Xoay lật mở lại bình thường
+        spotlightContent.classList.remove("flipping");
+      }, 250);
+    }
+
     function bindEvents(els) {
+      // Tìm kiếm chủ đề theo tên
+      if (els.topicSearchInput) {
+        els.topicSearchInput.addEventListener("input", function (e) {
+          const keyword = e.target.value.toLowerCase().trim();
+          const filtered = topics.filter(t => (t.name || "").toLowerCase().includes(keyword));
+          renderTopics(filtered);
+        });
+      }
+
+      // Đổi từ spotlight khác
+      if (els.btnRefreshSpotlight) {
+        els.btnRefreshSpotlight.addEventListener("click", showRandomSpotlight);
+      }
+
       els.btnGeneratePrompt.addEventListener("click", function () {
         const topicName = els.topicInput.value.trim();
         const count = parseInt(els.countInput.value, 10) || 10;
@@ -237,16 +361,16 @@
       });
     }
 
-    function renderTopics() {
+    function renderTopics(topicList) {
       const els = elements;
       els.topicsList.innerHTML = "";
-      if (topics.length === 0) {
+      if (!topicList || topicList.length === 0) {
         els.topicsEmpty.classList.add("show");
         return;
       }
       els.topicsEmpty.classList.remove("show");
 
-      topics.forEach((topic, idx) => {
+      topicList.forEach((topic, idx) => {
         const col = document.createElement("div");
         const colorVars = getColorVariants(topic.color);
 
@@ -265,20 +389,19 @@
         col.setAttribute("draggable", "true");
         col.dataset.index = idx;
 
-        // BỎ HẲN NÚT KIỂM TRA - CHỈ GIỮ LẠI: BẮT ĐẦU, CHỈNH SỬA, XÓA
         col.innerHTML = `
           <div class="topic-card" style="border-left: 4px solid ${topic.color}; background: linear-gradient(to right, ${colorVars.veryLight}, white);">
             ${isValidData
             ? '<i class="bx bx-check-circle text-success topic-status-icon" title="Dữ liệu hợp lệ"></i>'
             : '<i class="bx bx-x-circle text-danger topic-status-icon" title="Thiếu hoặc sai dữ liệu JSON"></i>'}
             <h6 class="fw-bold mb-1 text-truncate">${escapeHtml(topic.name)}</h6>
-            <p class="text-muted small mb-3"><i class="bx bx-collection me-1"></i>${parsedData.length} từ vựng</p>
-            <div class="d-flex flex-wrap gap-2">
+            <p class="text-muted small mb-2"><i class="bx bx-collection me-1"></i>${parsedData.length} từ vựng</p>
+            <div class="d-flex flex-wrap gap-1">
               <button class="btn btn-sm rounded-pill text-white btn-start ${!isValidData ? 'disabled opacity-50' : ''}" style="background-color: ${topic.color};" ${!isValidData ? 'disabled' : ''}>
                 <i class="bx bx-play me-1"></i>Bắt đầu
               </button>
               <button class="btn btn-outline-secondary btn-sm rounded-pill btn-edit">
-                <i class="bx bx-edit me-1"></i>Chỉnh sửa
+                <i class="bx bx-edit me-1"></i>Sửa
               </button>
               <button class="btn btn-outline-danger btn-sm rounded-pill btn-delete">
                 <i class="bx bx-trash me-1"></i>Xóa
@@ -287,30 +410,27 @@
           </div>
         `;
 
-        // Nút Bắt đầu lật thẻ
+        // Bắt đầu lật thẻ
         col.querySelector(".btn-start").addEventListener("click", function () {
           if (isValidData) {
             window.location.href = `/study-flashcard?id=${topic.topicId}`;
           }
         });
 
-        // Nút Chỉnh sửa
+        // Chỉnh sửa
         col.querySelector(".btn-edit").addEventListener("click", function () {
           currentTopicId = topic.topicId;
           els.editTopicName.value = topic.name;
 
-          let displayData = (topic.dataJson || "").trim();
-          if (displayData.startsWith("[")) displayData = displayData.substring(1).trim();
-          if (displayData.endsWith("]")) displayData = displayData.substring(0, displayData.length - 1).trim();
+          // DÙNG HÀM FORMAT TỰ ĐỘNG THAY VÌ CẮT CHUỖI CŨ
+          els.editTopicData.value = formatJsonDisplay(topic.dataJson);
 
-          els.editTopicData.value = displayData;
           selectedColor = topic.color || COLORS[0];
-
           renderColorPicker(els);
           els.editTopicModal.show();
         });
 
-        // Nút Xóa có Modal xác nhận
+        // Xóa
         col.querySelector(".btn-delete").addEventListener("click", function () {
           showConfirmModal("Bạn chắc chắn muốn xóa chủ đề này?", () => {
             fetch(`${API_BASE_URL}/${topic.topicId}`, { method: "DELETE" })
@@ -330,7 +450,6 @@
           topics,
           function (updatedData) {
             topics = updatedData;
-
             topics.forEach((topic, index) => {
               topic.orderIndex = index;
               fetch(API_BASE_URL, {
@@ -339,8 +458,7 @@
                 body: JSON.stringify(topic)
               }).catch(err => console.error("Lỗi cập nhật vị trí:", err));
             });
-
-            renderTopics();
+            renderTopics(topics);
             if (window.showToast) showToast("Đã lưu vị trí sắp xếp mới!", "success");
           }
         );
@@ -357,25 +475,42 @@
         return;
       }
 
+      let formattedJsonToSave = "[]";
+
       if (rawInput) {
+        // 1. Dọn dẹp Markdown và giải mã HTML Entities
         rawInput = rawInput.replaceAll("```json", "").replaceAll("```", "").trim();
+        rawInput = rawInput.replace(/&quot;/g, '"').replace(/&#34;/g, '"')
+                            .replace(/&amp;/g, '&').replace(/&lt;/g, '<')
+                            .replace(/&gt;/g, '>').replace(/&#39;/g, "'");
+
+        // 2. Bỏ ngoặc vuông ngoài cùng nếu có
         if (rawInput.startsWith("[")) rawInput = rawInput.substring(1).trim();
         if (rawInput.endsWith("]")) rawInput = rawInput.substring(0, rawInput.length - 1).trim();
 
-        rawInput = rawInput.replace(/}\s*\{/g, "},{");
+        // 3. 🪄 TỰ ĐỘNG VÁ LỖI THIẾU DẤU PHẨY / THIẾU NGOẶC VÀ THÊM XUỐNG DÒNG
+        rawInput = rawInput.replace(/\}\s*(?="englishVocabulary"|"vietnameseVocabulary")/g, "},\n{");
+        rawInput = rawInput.replace(/}\s*\{/g, "},\n{");
+
+        // 4. Đảm bảo mở đầu bằng { và kết thúc bằng }
+        if (!rawInput.startsWith("{")) rawInput = "{" + rawInput;
+        if (!rawInput.endsWith("}")) rawInput = rawInput + "}";
+
+        // Bọc lại thành mảng JSON
         rawInput = "[" + rawInput + "]";
 
         try {
           const parsedArr = JSON.parse(rawInput);
           if (!Array.isArray(parsedArr)) throw new Error();
+          
+          // 🪄 Format thụt lề 2 dấu cách giúp toàn bộ dữ liệu luôn ngay hàng thẳng lối
+          formattedJsonToSave = JSON.stringify(parsedArr, null, 2);
         } catch (e) {
           if (window.showToast) {
-            showToast("Dữ liệu JSON bị sai cú pháp! Hãy kiểm tra lại các dấu ngoặc.", "danger");
+            showToast("Dữ liệu JSON bị sai cú pháp nghiêm trọng! Vui lòng kiểm tra lại.", "danger");
           }
           return;
         }
-      } else {
-        rawInput = "[]";
       }
 
       const existingTopic = topics.find(t => t.topicId === currentTopicId);
@@ -384,7 +519,7 @@
         topicId: currentTopicId,
         name: name,
         color: selectedColor,
-        dataJson: rawInput,
+        dataJson: formattedJsonToSave,
         orderIndex: existingTopic ? existingTopic.orderIndex : 0
       };
 

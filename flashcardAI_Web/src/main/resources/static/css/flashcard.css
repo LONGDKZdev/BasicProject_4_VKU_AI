@@ -80,3 +80,114 @@
   border-right: 4px solid #3b82f6 !important;
   transform: scale(1.02);
 }
+
+/* Card Compact cho danh sách chủ đề */
+.topic-card {
+  padding: 14px 16px !important;
+  border-radius: 14px !important;
+}
+
+.topic-card h6 {
+  font-size: 16px;
+}
+
+.topic-card .btn {
+  font-size: 13px;
+  padding: 4px 12px;
+}
+
+/* Hiệu ứng mượt cho các Card Dashboard bên phải */
+#resume-card-box, #spotlight-card-box {
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+#resume-card-box:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.08) !important;
+}
+
+/* KHÓA CUỘN TOÀN TRANG ĐỂ NAVBAR LUÔN NẰM CỐ ĐỊNH */
+html, body {
+  height: 100%;
+  overflow: hidden;
+}
+
+.main-container {
+  height: calc(100vh - 90px);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+#flashcard-container {
+  height: 100%;
+}
+
+#flashcard-container > .row {
+  height: 100%;
+}
+
+/* KHỐI TRÁI: TỰ ĐỘNG FIT CHIỀU CAO VÀ CHỈ CUỘN TRONG DANH SÁCH THẺ */
+.col-12.col-xl-8 {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.col-12.col-xl-8 > .card {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+#topics-list {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding-right: 6px;
+  margin-top: 4px;
+}
+
+/* KHỐI PHẢI: NẾU MÀN HÌNH NHỎ CŨNG SẼ TỰ CUỘN GỌN GÀNG */
+.col-12.col-xl-4 {
+  height: 100%;
+  overflow-y: auto;
+  padding-right: 6px;
+}
+
+/* THANH CUỘN MẢNH TINH TẾ */
+#topics-list::-webkit-scrollbar,
+.col-12.col-xl-4::-webkit-scrollbar {
+  width: 6px;
+}
+#topics-list::-webkit-scrollbar-thumb,
+.col-12.col-xl-4::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 10px;
+}
+#topics-list::-webkit-scrollbar-track,
+.col-12.col-xl-4::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* HIỆU ỨNG XOAY LẬT 3D CHO CARD SPOTLIGHT */
+#spotlight-content {
+  transition: transform 0.25s ease-in-out, opacity 0.25s ease-in-out;
+  transform-style: preserve-3d;
+  backface-visibility: hidden;
+}
+
+/* Lật nghiêng ngang 90 độ (úp xuống) và mờ dần */
+#spotlight-content.flipping {
+  transform: rotateX(90deg);
+  opacity: 0;
+}
+
+/* Hiệu ứng xoay icon refresh khi bấm */
+#btn-refresh-spotlight i {
+  transition: transform 0.4s ease;
+}
+#btn-refresh-spotlight:active i {
+  transform: rotate(180deg);
+}

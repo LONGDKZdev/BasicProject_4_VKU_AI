@@ -1,82 +1,119 @@
 package com.vku.flashcard_ai.modules.auth;
 
-import com.google.cloud.firestore.*;
-import com.google.firebase.cloud.FirestoreClient;
+import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.auth.UserRecord;
 import org.springframework.stereotype.Service;
 
-import java.util.List;
 import java.util.UUID;
-import java.util.concurrent.ExecutionException;
 
 @Service
-@SuppressWarnings("null")
 public class AuthService {
 
-    private static final String COLLECTION_NAME = "users";
+    private final UserAccountRepository userAccountRepository;
 
-    public String register(UserAccount user) throws ExecutionException, InterruptedException {
-        Firestore db = FirestoreClient.getFirestore();
-        String generatedId = UUID.randomUUID().toString();
-        user.setUserId(generatedId);
-        user.setCreatedAt(System.currentTimeMillis());
+    public AuthService(UserAccountRepository userAccountRepository) {
+        this.userAccountRepository = userAccountRepository;
+    }
+
+    public UserAccount getUserProfile(String username) {
+        return userAccountRepository.findByUsername(username);
+    }
+
+    /**
+     * Đăng ký người dùng mới
+     */
+    public void register(UserAccount user) throws Exception {
+        if (user.getUsername() == null || user.getUsername().trim().isEmpty()) {
+            throw new Exception("Tên đăng nhập không được để trống!");
+        }
+
+        UserAccount existing = userAccountRepository.findByUsername(user.getUsername().trim());
+        if (existing != null) {
+            throw new Exception("Tên đăng nhập đã tồn tại!");
+        }
+
+        if (user.getUserId() == null || user.getUserId().isEmpty()) {
+            user.setUserId(UUID.randomUUID().toString());
+        }
         if (user.getAvatarKey() == null || user.getAvatarKey().isEmpty()) {
-            user.setAvatarKey("avatar_1");
+            user.setAvatarKey("avatar_0");
         }
 
-        db.collection(COLLECTION_NAME).document(generatedId).set(user);
-        return "User registered successfully!";
+        userAccountRepository.save(user);
     }
 
-    public UserAccount getUserProfile(String username) throws ExecutionException, InterruptedException {
-        Firestore db = FirestoreClient.getFirestore();
-        List<QueryDocumentSnapshot> docs = db.collection(COLLECTION_NAME)
-                .whereEqualTo("username", username)
-                .get().get().getDocuments();
-
-        if (!docs.isEmpty()) {
-            UserAccount account = docs.get(0).toObject(UserAccount.class);
-            account.setPassword(null); // Không gửi mật khẩu về frontend
-            return account;
+    /**
+     * Đặt lại mật khẩu mới trực tiếp (Reset Password)
+     */
+    public void resetPasswordDirectly(String username, String newPassword) throws Exception {
+        UserAccount account = getUserProfile(username);
+        if (account == null) {
+            throw new Exception("Tài khoản không tồn tại!");
         }
-        return null;
-    }
 
-    public void updateProfile(String username, String email, String avatarKey) throws ExecutionException, InterruptedException {
-        Firestore db = FirestoreClient.getFirestore();
-        List<QueryDocumentSnapshot> docs = db.collection(COLLECTION_NAME)
-                .whereEqualTo("username", username)
-                .get().get().getDocuments();
+        // 1. Cập nhật mật khẩu dạng chuỗi thuần vào Firestore
+        account.setPassword(newPassword);
+        userAccountRepository.save(account);
 
-        if (!docs.isEmpty()) {
-            DocumentReference docRef = docs.get(0).getReference();
-            if (email != null && !email.trim().isEmpty()) {
-                docRef.update("email", email.trim()).get();
+        // 2. Đồng bộ mật khẩu mới sang Firebase Authentication nếu tài khoản có email
+        try {
+            if (account.getEmail() != null && !account.getEmail().trim().isEmpty()) {
+                UserRecord userRecord = FirebaseAuth.getInstance().getUserByEmail(account.getEmail().trim());
+                if (userRecord != null) {
+                    UserRecord.UpdateRequest request = new UserRecord.UpdateRequest(userRecord.getUid())
+                            .setPassword(newPassword);
+                    FirebaseAuth.getInstance().updateUser(request);
+                    System.out.println("✅ Đã đồng bộ mật khẩu mới lên Firebase Auth cho UID: " + userRecord.getUid());
+                }
             }
-            if (avatarKey != null && !avatarKey.trim().isEmpty()) {
-                docRef.update("avatarKey", avatarKey.trim()).get();
-            }
+        } catch (Exception ex) {
+            System.err.println("⚠️ Cảnh báo Firebase Auth: " + ex.getMessage());
         }
     }
 
+    /**
+     * Đổi mật khẩu trong trang Cài đặt (Settings)
+     */
     public void changePassword(String username, String currentPassword, String newPassword) throws Exception {
-        Firestore db = FirestoreClient.getFirestore();
-        List<QueryDocumentSnapshot> docs = db.collection(COLLECTION_NAME)
-                .whereEqualTo("username", username)
-                .get().get().getDocuments();
-
-        if (docs.isEmpty()) {
-            throw new Exception("Không tìm thấy tài khoản!");
+        UserAccount account = getUserProfile(username);
+        if (account == null) {
+            throw new Exception("Tài khoản không tồn tại!");
         }
 
-        DocumentSnapshot userDoc = docs.get(0);
-        String storedPassword = userDoc.getString("password");
-
-        // Chuẩn hóa kiểm tra mật khẩu hiện tại
-        String checkStored = storedPassword != null ? storedPassword.replace("{noop}", "") : "";
-        if (!checkStored.equals(currentPassword)) {
+        if (!account.getPassword().equals(currentPassword)) {
             throw new Exception("Mật khẩu hiện tại không chính xác!");
         }
 
-        userDoc.getReference().update("password", newPassword).get();
+        account.setPassword(newPassword);
+        userAccountRepository.save(account);
+
+        try {
+            if (account.getEmail() != null && !account.getEmail().trim().isEmpty()) {
+                UserRecord userRecord = FirebaseAuth.getInstance().getUserByEmail(account.getEmail().trim());
+                if (userRecord != null) {
+                    UserRecord.UpdateRequest request = new UserRecord.UpdateRequest(userRecord.getUid())
+                            .setPassword(newPassword);
+                    FirebaseAuth.getInstance().updateUser(request);
+                    System.out.println("✅ Đã đồng bộ đổi mật khẩu lên Firebase Auth thành công.");
+                }
+            }
+        } catch (Exception ex) {
+            System.err.println("⚠️ Cảnh báo Firebase Auth: " + ex.getMessage());
+        }
+    }
+
+    /**
+     * Cập nhật Profile (Email, Avatar)
+     */
+    public void updateProfile(String username, String email, String avatarKey) throws Exception {
+        UserAccount account = getUserProfile(username);
+        if (account == null) {
+            throw new Exception("Tài khoản không tồn tại!");
+        }
+
+        if (email != null) account.setEmail(email.trim());
+        if (avatarKey != null) account.setAvatarKey(avatarKey);
+
+        userAccountRepository.save(account);
     }
 }

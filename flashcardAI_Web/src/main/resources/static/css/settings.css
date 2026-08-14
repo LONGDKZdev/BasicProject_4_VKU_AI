@@ -87,3 +87,37 @@
     box-shadow: 0 0 0 3px rgba(13, 110, 253, 0.2);
     transform: scale(1.08);
 }
+
+/* CONTAINER BỌC Ô NHẬP MẬT KHẨU CÓ NÚT CON MẮT */
+.password-input-group {
+    position: relative !important;
+    display: flex;
+    align-items: center;
+}
+
+.password-input-group input {
+    padding-right: 42px !important; /* Dành chỗ cho icon con mắt không bị chữ đè lên */
+}
+
+.password-toggle-icon {
+    position: absolute;
+    right: 14px;
+    top: 50%;
+    transform: translateY(-50%);
+    cursor: pointer;
+    color: #94a3b8;
+    font-size: 20px;
+    z-index: 10;
+    user-select: none;
+    transition: color 0.2s ease;
+}
+
+.password-toggle-icon:hover {
+    color: #0d6efd;
+}
+
+/* TẮT NÚT CON MẮT MẶC ĐỊNH CỦA TRÌNH DUYỆT (EDGE/CHROME) */
+input[type="password"]::-ms-reveal,
+input[type="password"]::-ms-clear {
+    display: none;
+}
