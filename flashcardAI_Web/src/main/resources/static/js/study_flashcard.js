@@ -1,6 +1,8 @@
 document.addEventListener("DOMContentLoaded", function () {
   const STORAGE_STUDY_KEY = "study-space.flashcard-study.v1";
 
+    // --- KHAI BÁO ÂM THANH ---
+  const audioFlip = new Audio("/assets/sounds/flipcard.mp3");
 
   audioFlip.playbackRate = 1.8;
   function playAudio(audioObj) {

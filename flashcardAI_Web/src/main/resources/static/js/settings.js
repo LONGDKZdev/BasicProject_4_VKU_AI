@@ -13,8 +13,7 @@ document.addEventListener("DOMContentLoaded", function () {
         { key: "avatar_9", icon: "🦄", label: "Kỳ lân" },
         { key: "avatar_10", icon: "🐧", label: "Chim cánh cụt" },
         { key: "avatar_11", icon: "🐸", label: "Ếch xanh" },
-
-
+        { key: "avatar_12", icon: "💀", label: "đầu lâu" }
     ];
 
     let selectedAvatarKey = "avatar_0";
@@ -186,21 +185,6 @@ document.addEventListener("DOMContentLoaded", function () {
             .catch(() => {
                 if (window.showToast) window.showToast("Lỗi kết nối máy chủ!", "danger");
             });
-    });
-
-    // 7. Lưu Tùy chỉnh học tập
-    function loadPreferences() {
-        selectVoiceLang.value = localStorage.getItem("study_pref_lang") || "en-US";
-        selectVoiceRate.value = localStorage.getItem("study_pref_rate") || "0.9";
-        checkAutoSpeak.checked = localStorage.getItem("study_pref_auto_speak") === "true";
-    }
-
-    btnSavePref.addEventListener("click", function () {
-        localStorage.setItem("study_pref_lang", selectVoiceLang.value);
-        localStorage.setItem("study_pref_rate", selectVoiceRate.value);
-        localStorage.setItem("study_pref_auto_speak", checkAutoSpeak.checked);
-
-        if (window.showToast) window.showToast("Đã lưu cài đặt học tập thành công!", "success");
     });
 
     // Khởi chạy

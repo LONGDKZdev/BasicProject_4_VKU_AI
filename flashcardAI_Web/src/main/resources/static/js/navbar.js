@@ -3,7 +3,7 @@ document.addEventListener('DOMContentLoaded', function () {
         avatar_0: "👤", // Avatar mặc định
         avatar_1: "🦊", avatar_2: "🐱", avatar_3: "🦉", avatar_4: "🤖", avatar_5: "🐼",
         avatar_6: "🦁", avatar_7: "🐯", avatar_8: "🐶", avatar_9: "🦄", avatar_10: "🐧",
-        avatar_11 : "🐸"
+        avatar_11 : "🐸", avatar_12 : "💀"
     };
 
     const navAvatarEl = document.getElementById('nav-avatar-icon');
