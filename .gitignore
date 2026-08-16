@@ -86,3 +86,6 @@ TXT_Code/
 
 # --- Custom: Ignore Application Properties (Sensitive Configuration) ---
 application.properties
+
+# --- Custom file config ---
+flashcardAI_Mobile/node_modules/
