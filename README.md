@@ -13,12 +13,12 @@ Dự án xây dựng hệ thống học tập và ghi nhớ **Flashcard thông m
 * **AI Chat Assistant:** Endpoint tương tác hội thoại trực tiếp với AI phục vụ giải đáp ngữ pháp, tra cứu từ vựng và tạo tình huống giao tiếp mẫu.
 
 ### 2. Mobile Client (React Native / Expo - Port 8081)
-* **Giao diện đa nền tảng:** Tối ưu hóa trải nghiệm trên Android, iOS và Web Browser bằng **React Native 0.81.5** & **Expo SDK 54** (React 19)[cite: 5].
+* **Giao diện đa nền tảng:** Tối ưu hóa trải nghiệm trên Android, iOS và Web Browser bằng **React Native 0.81.5** & **Expo SDK 54** (React 19).
 * **Cơ chế lật thẻ trực quan (Flip Card):** Hiệu ứng chuyển đổi mặt trước (Front - Thuật ngữ) và mặt sau (Back - Định nghĩa & Ví dụ) mượt mà.
 * **Xử lý âm thanh & Giọng nói:**
-  * **Text-to-Speech (`expo-speech`):** Tự động phát âm chuẩn từng từ vựng bằng giọng AI[cite: 5].
-  * **Audio Recording (`expo-audio`):** Ghi âm giọng đọc của người dùng để luyện phản xạ và kiểm tra phát âm[cite: 5].
-* **Lưu trữ phiên cục bộ:** Sử dụng `@react-native-async-storage/async-storage` để lưu token đăng nhập và trạng thái ứng dụng ngoại tuyến[cite: 5].
+  * **Text-to-Speech (`expo-speech`):** Tự động phát âm chuẩn từng từ vựng bằng giọng AI.
+  * **Audio Recording (`expo-audio`):** Ghi âm giọng đọc của người dùng để luyện phản xạ và kiểm tra phát âm.
+* **Lưu trữ phiên cục bộ:** Sử dụng `@react-native-async-storage/async-storage` để lưu token đăng nhập và trạng thái ứng dụng ngoại tuyến.
 
 ---
 
@@ -39,17 +39,17 @@ flashcard_ai/
 │   │   └── application.properties        # Cấu hình Database & Port Server
 │   └── pom.xml                           # Quản lý dependencies Maven
 │
-└── flashcardAI_Mobile/                   # Frontend Mobile App (React Native / Expo)[cite: 5]
+└── flashcardAI_Mobile/                   # Frontend Mobile App (React Native / Expo)
     ├── src/
-    │   ├── api/                          # Client API (Axios instance, auth, topic, ai)[cite: 5]
+    │   ├── api/                          # Client API (Axios instance, auth, topic, ai)
     │   ├── components/                   # Custom UI Components (FlashcardItem, Header, Input)
     │   ├── navigation/                   # Cấu hình Stack Navigator (AppNavigator)
     │   └── screens/                      # Màn hình giao diện (Login, Register, Home, Study, AIChat)
-    ├── app.json                          # Cấu hình Expo, quyền RECORD_AUDIO & EAS Project ID[cite: 5]
-    ├── babel.config.js                   # Cấu hình Babel preset expo[cite: 5]
-    ├── eas.json                          # Cấu hình build APK / Production EAS Build[cite: 5]
-    ├── package.json                      # Quản lý dependencies di động (SDK 54)[cite: 5]
-    └── index.js                          # Điểm khởi chạy Root của ứng dụng[cite: 5]
+    ├── app.json                          # Cấu hình Expo, quyền RECORD_AUDIO & EAS Project ID
+    ├── babel.config.js                   # Cấu hình Babel preset expo
+    ├── eas.json                          # Cấu hình build APK / Production EAS Build
+    ├── package.json                      # Quản lý dependencies di động (SDK 54)
+    └── index.js                          # Điểm khởi chạy Root của ứng dụng
 ```
 
 ---
@@ -155,13 +155,13 @@ npx expo start -c
 
 ### 2. Hướng dẫn sử dụng các tính năng chính
 
-* **Đăng ký / Đăng nhập:** Tạo tài khoản mới hoặc đăng nhập để lưu trữ phiên học tập an toàn trên thiết bị[cite: 5].
+* **Đăng ký / Đăng nhập:** Tạo tài khoản mới hoặc đăng nhập để lưu trữ phiên học tập an toàn trên thiết bị.
 * **Quản lý Bộ Flashcard:** Nhấn biểu tượng `+` để thêm mới chủ đề, chọn màu sắc và thêm các thẻ học thủ công.
 * **Tạo Flashcard tự động bằng AI:** Nhập tên chủ đề cần học (ví dụ: *IELTS Speaking Part 1*, *Từ vựng du lịch*) $\rightarrow$ Chọn số lượng thẻ $\rightarrow$ Hệ thống AI sẽ tự động sinh danh sách từ vựng kèm ngữ nghĩa và lưu vào tài khoản.
 * **Chế độ Luyện tập:** 
   * Chạm để lật qua lại giữa 2 mặt của Flashcard.
-  * Nhấn biểu tượng loa để nghe phát âm chuẩn bằng giọng AI (`expo-speech`)[cite: 5].
-  * Nhấn giữ biểu tượng Micro để ghi âm giọng đọc của bạn và đối chiếu (`expo-audio`)[cite: 5].
+  * Nhấn biểu tượng loa để nghe phát âm chuẩn bằng giọng AI (`expo-speech`).
+  * Nhấn giữ biểu tượng Micro để ghi âm giọng đọc của bạn và đối chiếu (`expo-audio`).
 * **AI Chat Assistant:** Chuyển sang tab AI Chat để trao đổi ngữ pháp, đặt câu hoặc nhờ AI giải thích nghĩa sâu của từ vựng.
 
 ---
@@ -187,7 +187,7 @@ npx expo start -c
 | :--- | :--- | :--- |
 | **Backend** | `mvn clean install` | Tải lại dependency và đóng gói file JAR |
 | **Backend** | `mvn spring-boot:run` | Khởi chạy máy chủ Backend API |
-| **Mobile** | `npm install` | Cài đặt toàn bộ thư viện React Native / Expo[cite: 5] |
+| **Mobile** | `npm install` | Cài đặt toàn bộ thư viện React Native / Expo |
 | **Mobile** | `npx expo start -c` | Khởi chạy Metro Bundler kèm xóa sạch cache cũ |
 | **Mobile** | `npx expo start --tunnel` | Khởi chạy chế độ Tunnel vượt Firewall và mạng 4G |
-| **Mobile** | `npx expo install react-dom react-native-web` | Bổ sung thư viện hỗ trợ giao diện trên nền tảng Web[cite: 5] |
+| **Mobile** | `npx expo install react-dom react-native-web` | Bổ sung thư viện hỗ trợ giao diện trên nền tảng Web |
