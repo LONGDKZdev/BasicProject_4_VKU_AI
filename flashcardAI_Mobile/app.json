@@ -1,0 +1,35 @@
+{
+  "expo": {
+    "name": "flashcardAI_Mobile",
+    "slug": "flashcardai-mobile",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "resizeMode": "contain",
+      "backgroundColor": "#ffffff"
+    },
+    "assetBundlePatterns": ["**/*"],
+    "ios": {
+      "supportsTablet": true
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#ffffff"
+      },
+      "permissions": [
+        "android.permission.RECORD_AUDIO",
+        "android.permission.MODIFY_AUDIO_SETTINGS",
+        "android.permission.INTERNET",
+        "android.permission.ACCESS_NETWORK_STATE"
+      ],
+      "package": "com.yusin2006.flashcardaimobile"
+    },
+    "plugins": ["expo-audio"],
+    "extra": {
+      "eas": {
+        "projectId": "7657d142-3411-4c50-bde3-dfdca160b0d9"
+      }
+    }
+  }
+}
