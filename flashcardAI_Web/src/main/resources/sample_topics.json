@@ -1,0 +1,20 @@
+[
+  {
+    "id": "sample-ielts-core",
+    "name": "Từ vựng IELTS Band 7+",
+    "category": "IELTS",
+    "color": "#60a5fa",
+    "description": "Các từ vựng nâng cao chuyên dùng cho bài thi viết và nói IELTS.",
+    "count": 2,
+    "dataJson": "[{\"englishVocabulary\":\"Ubiquitous\",\"vietnameseVocabulary\":\"Có mặt ở khắp mọi nơi\",\"example\":\"Smartphones have become ubiquitous in daily life.\",\"pronunciation\":\"/juːˈbɪk.wə.t̬əs/\",\"wordPos\":\"(adj)\"},{\"englishVocabulary\":\"Pragmatic\",\"vietnameseVocabulary\":\"Thực tế, thực dụng\",\"example\":\"We need to adopt a more pragmatic approach.\",\"pronunciation\":\"/præɡˈmæt̬.ɪk/\",\"wordPos\":\"(adj)\"}]"
+  },
+  {
+    "id": "sample-it-tech",
+    "name": "Chuyên ngành CNTT",
+    "category": "IT",
+    "color": "#a78bfa",
+    "description": "Từ vựng cơ bản và nâng cao ngành Kỹ thuật Phần mềm.",
+    "count": 1,
+    "dataJson": "[{\"englishVocabulary\":\"Concurrency\",\"vietnameseVocabulary\":\"Đồng thời (xử lý đa luồng)\",\"example\":\"Handling concurrency is essential in backend systems.\",\"pronunciation\":\"/kənˈkɝː.ən.si/\",\"wordPos\":\"(n)\"}]"
+  }
+]

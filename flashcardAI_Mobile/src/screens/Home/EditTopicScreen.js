@@ -41,6 +41,19 @@ export default function EditTopicScreen({ route, navigation }) {
 
   useEffect(() => {
     if (topic?.dataJson && topic.dataJson !== "[]" && topic.dataJson !== "") {
+      try {
+        let clean = topic.dataJson.trim();
+        if (!clean.startsWith("[")) clean = "[" + clean + "]";
+        const parsed = JSON.parse(clean);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          // Chỉ hiển thị các khối { ... } cách nhau bằng dấu phẩy
+          setDataJsonText(parsed.map(item => JSON.stringify(item, null, 2)).join(",\n\n"));
+          setValidationMsg("✅ Dữ liệu JSON hợp lệ và sẵn sàng!");
+          setIsValid(true);
+          return;
+        }
+      } catch (e) {}
+      setDataJsonText(topic.dataJson);
       checkValidation(topic.dataJson);
     }
   }, []);
@@ -87,15 +100,17 @@ export default function EditTopicScreen({ route, navigation }) {
     Alert.alert("Thành công", "Đã sao chép câu lệnh Prompt vào bộ nhớ đệm!");
   };
 
-  // LƯU DỮ LIỆU LÊN FIREBASE
+  // LƯU DỮ LIỆU LÊN FIREBASE (Đồng bộ timestamp với Web)
   const handleConfirm = async () => {
-    // Trường hợp cố tình xóa sạch Text
+    const now = Date.now();
+
     if (!dataJsonText || dataJsonText.trim() === "") {
       try {
         await updateDoc(doc(db, "topics", topic.topicId), {
           color: selectedColor,
           dataJson: "[]",
           count: 0,
+          orderIndex: now,
         });
         Alert.alert("Thành công", "Đã lưu màu sắc và làm rỗng chủ đề!");
         navigation.goBack();
@@ -105,30 +120,29 @@ export default function EditTopicScreen({ route, navigation }) {
       return;
     }
 
-    const valid = checkValidation(dataJsonText);
-    if (valid) {
-      try {
-        let cleanInput = dataJsonText
-          .replaceAll("```json", "")
-          .replaceAll("```", "")
-          .trim();
-        const parsed = JSON.parse(cleanInput);
+    // Dọn dẹp markdown và ngoặc thừa
+    let raw = dataJsonText.replaceAll("```json", "").replaceAll("```", "").trim();
+    raw = raw.replace(/^\[+/, "").replace(/\]+$/, "").trim(); // Bỏ [ ] thừa
+    raw = raw.replace(/}\s*\{/g, "},\n{"); // Vá thiếu phẩy
+    raw = "[" + raw + "]"; // Bọc lại chuẩn mảng
 
-        await updateDoc(doc(db, "topics", topic.topicId), {
-          color: selectedColor,
-          dataJson: JSON.stringify(parsed),
-          count: parsed.length,
-        });
+    try {
+      const parsed = JSON.parse(raw);
+      if (!Array.isArray(parsed)) throw new Error();
 
-        Alert.alert("Thành công", "Đã lưu dữ liệu JSON và màu sắc thành công!");
-        navigation.goBack();
-      } catch (error) {
-        Alert.alert("Lỗi", "Không thể lưu vào cơ sở dữ liệu: " + error.message);
-      }
-    } else {
+      await updateDoc(doc(db, "topics", topic.topicId), {
+        color: selectedColor,
+        dataJson: JSON.stringify(parsed),
+        count: parsed.length,
+        orderIndex: now,
+      });
+
+      Alert.alert("Thành công", `Đã lưu thành công ${parsed.length} từ vựng!`);
+      navigation.goBack();
+    } catch (err) {
       Alert.alert(
         "Cảnh báo",
-        "Dữ liệu JSON chưa hợp lệ, vui lòng kiểm tra lại.",
+        "Dữ liệu JSON sai cú pháp! Hãy đảm bảo mỗi từ vựng nằm trong cặp ngoặc nhọn { } ngăn cách nhau bằng dấu phẩy."
       );
     }
   };

@@ -25,11 +25,11 @@ public class EmailService {
 
         helper.setFrom(fromEmail);
         helper.setTo(toEmail);
-        helper.setSubject("🔒 Yêu cầu đặt lại mật khẩu - StudySpace");
+        helper.setSubject("🔒 Yêu cầu đặt lại mật khẩu - flashcard AI");
 
         String htmlContent = "<div style='font-family: Arial, sans-serif; max-width: 600px; margin: auto; padding: 20px; border: 1px solid #eae2d8; border-radius: 12px; background-color: #fcf8f2;'>"
                 + "<div style='text-align: center; margin-bottom: 20px;'>"
-                + "<h2 style='color: #0d6efd; margin: 0;'>StudySpace</h2>"
+                + "<h2 style='color: #0d6efd; margin: 0;'>flashcard AI</h2>"
                 + "<p style='color: #64748b; font-size: 14px;'>Nền tảng học từ vựng thông minh</p>"
                 + "</div>"
                 + "<div style='background-color: #ffffff; padding: 24px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.05);'>"
@@ -41,7 +41,7 @@ public class EmailService {
                 + "<p style='color: #888888; font-size: 13px;'>Nếu bạn không thực hiện yêu cầu này, hãy yên tâm bỏ qua email này.</p>"
                 + "</div>"
                 + "<div style='text-align: center; margin-top: 20px; color: #94a3b8; font-size: 12px;'>"
-                + "<p>© 2026 StudySpace. All rights reserved.</p>"
+                + "<p>© 2026 flashcard AI. All rights reserved.</p>"
                 + "</div>"
                 + "</div>";
 

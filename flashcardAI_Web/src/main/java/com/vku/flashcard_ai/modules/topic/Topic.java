@@ -9,7 +9,7 @@ public class Topic {
     private int count;
     private String dataJson; // Lưu toàn bộ mảng JSON từ vựng ở đây
     private long createdAt;
-    private int orderIndex;
+    private long orderIndex; // ĐỔI TỪ int SANG long
 
     public Topic() {}
 
@@ -35,8 +35,9 @@ public class Topic {
     public long getCreatedAt() { return createdAt; }
     public void setCreatedAt(long createdAt) { this.createdAt = createdAt; }
 
-    public int getOrderIndex() { return orderIndex; }
-    public void setOrderIndex(int orderIndex) { this.orderIndex = orderIndex; }
+    // ĐỔI GETTER/SETTER TƯƠNG ỨNG
+    public long getOrderIndex() { return orderIndex; }
+    public void setOrderIndex(long orderIndex) { this.orderIndex = orderIndex; }
 
     public String getUsername() { return username; }
     public void setUsername(String username) { this.username = username; }

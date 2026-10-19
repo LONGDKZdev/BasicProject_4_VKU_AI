@@ -134,8 +134,24 @@ public class AiService {
     }
 
     public String callCustomMachineLearningModel(String prompt) {
-        return "🧠 [AI Personal Custom ML]: Đã tiếp nhận yêu cầu và xử lý thành công qua thuật toán tự thiết kế!";
+    String lower = prompt.toLowerCase();
+    
+    if (lower.contains("tạo") && (lower.contains("từ vựng") || lower.contains("flashcard"))) {
+        return "{\n" +
+                "  \"englishVocabulary\": \"Adaptability\",\n" +
+                "  \"vietnameseVocabulary\": \"Khả năng thích ứng\",\n" +
+                "  \"example\": \"Adaptability is an essential skill in modern workplaces. Dịch: Khả năng thích ứng là một kỹ năng cần thiết trong môi trường làm việc hiện đại.\",\n" +
+                "  \"pronunciation\": \"/əˌdæp.təˈbɪl.ə.ti/\",\n" +
+                "  \"wordPos\": \"(n)\"\n" +
+                "}";
     }
+    
+    if (lower.contains("chào") || lower.contains("hi") || lower.contains("hello")) {
+        return "Xin chào! Tôi là Trợ lý AI Offline nội bộ của flashcard AI. Tôi có thể hỗ trợ tạo mẫu câu và trích xuất cấu trúc flashcard trực tiếp mà không cần mạng Internet.";
+    }
+
+    return "🧠 [flashcard AI Offline Engine]: Tôi đã phân tích câu hỏi của bạn: \"" + prompt + "\". Hãy nhập yêu cầu dạng 'Tạo từ vựng chủ đề [Tên]' để tôi tự động xuất flashcard nhé!";
+}
 
     private String escapeJson(String text) {
         return "\"" + text.replace("\\", "\\\\").replace("\"", "\\\"").replace("\n", "\\n").replace("\r", "") + "\"";

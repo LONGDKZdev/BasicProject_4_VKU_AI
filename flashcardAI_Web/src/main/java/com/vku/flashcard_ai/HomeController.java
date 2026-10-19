@@ -25,10 +25,10 @@ public class HomeController {
         return "chat-ai";
     }
 
-    // Trang Meet (Phòng họp / Camera / Mic / Socket)
-    @GetMapping("/meet")
-    public String meetPage() {
-        return "meet";
+    // Trang store (chứa chủ đề mẫu)
+    @GetMapping("/store")
+    public String storePage() {
+        return "store";
     }
 
     // Trang Cài đặt tài khoản

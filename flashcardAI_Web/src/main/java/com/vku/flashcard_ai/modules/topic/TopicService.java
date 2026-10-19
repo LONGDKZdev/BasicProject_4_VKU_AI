@@ -34,19 +34,26 @@ public class TopicService {
         return username; 
     }
 
+    // 1. Lấy danh sách sắp xếp ưu tiên bộ thẻ vừa thao tác lên đầu
     public List<Topic> getTopicsByUser(String userId) throws ExecutionException, InterruptedException {
         Firestore db = FirestoreClient.getFirestore();
+        // Bỏ orderBy ở Firestore Query để tránh lỗi Composite Index
         ApiFuture<QuerySnapshot> future = db.collection(COLLECTION_NAME)
                 .whereEqualTo("userId", userId)
-                .orderBy("orderIndex", Query.Direction.ASCENDING)
                 .get();
         
         List<QueryDocumentSnapshot> documents = future.get().getDocuments();
         List<Topic> topics = new ArrayList<>();
         for (DocumentSnapshot doc : documents) {
             Topic topic = doc.toObject(Topic.class);
-            topics.add(topic);
+            if (topic != null) {
+                topics.add(topic);
+            }
         }
+        
+        // Sắp xếp orderIndex giảm dần (thẻ mới nhất/vừa sửa lên đầu) bằng Java thuần
+        topics.sort((a, b) -> Long.compare(b.getOrderIndex(), a.getOrderIndex()));
+        
         return topics;
     }
 
@@ -174,7 +181,9 @@ public class TopicService {
             }
         }
 
-        docRef.update("dataJson", mergedJson, "count", totalCount);
+        // Đẩy orderIndex lên mốc thời gian hiện tại để nhảy lên đầu
+        long newOrderIndex = System.currentTimeMillis();
+        docRef.update("dataJson", mergedJson, "count", totalCount, "orderIndex", newOrderIndex);
 
         if (duplicateCount > 0) {
             return String.format("Đã thêm thành công %d từ mới (Đã bỏ qua %d từ bị trùng)!", validNewObjects.size(), duplicateCount);

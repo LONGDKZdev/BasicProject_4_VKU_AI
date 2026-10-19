@@ -1,3 +1,6 @@
+import axios from "axios";
+import { BASE_API_URL } from "../../constants/config";
+
 import React, { useState, useContext } from "react";
 import {
   View,
@@ -38,50 +41,59 @@ export default function LoginScreen({ navigation }) {
     setIsLoading(true);
 
     try {
-      // 1. Tạo câu truy vấn: Tìm user có username khớp với ô nhập liệu
-      const q = query(
-        collection(db, "users"),
-        where("username", "==", username.trim()),
+      // 1. Ưu tiên gửi xác thực đến Spring Boot Backend
+      const response = await axios.post(
+        `${BASE_API_URL}/api/auth/mobile-login`,
+        {
+          username: username.trim(),
+          password: password.trim(),
+        },
+        {
+          withCredentials: true,
+          timeout: 7000,
+        }
       );
 
-      const querySnapshot = await getDocs(q);
-
-      // 2. Kiểm tra xem tài khoản có tồn tại không
-      if (querySnapshot.empty) {
-        Alert.alert(
-          "Đăng nhập thất bại",
-          "Tài khoản không tồn tại trên hệ thống!",
-        );
-        setIsLoading(false);
-        return;
-      }
-
-      // 3. Lấy dữ liệu của user đầu tiên tìm thấy
-      const userDoc = querySnapshot.docs[0];
-      const userData = userDoc.data();
-
-      // 4. Đối chiếu mật khẩu
-      if (userData.password !== password) {
-        Alert.alert("Đăng nhập thất bại", "Mật khẩu không chính xác!");
-        setIsLoading(false);
-        return;
-      }
-
-      // 5. Mật khẩu đúng -> Đăng nhập thành công!
-      // Lưu toàn bộ thông tin (gồm cả userId, email, avatarKey) vào Context
-      await login({
-        userId: userDoc.id, // Lấy ID của document
-        ...userData,
-      });
-
-      // Chuyển sang luồng App chính
+      const userData = response.data;
+      await login(userData);
       navigation.replace("App");
     } catch (error) {
-      console.error("Lỗi Firebase:", error);
-      Alert.alert(
-        "Lỗi kết nối",
-        "Vui lòng kiểm tra lại cấu hình Firebase hoặc mạng Internet.",
-      );
+      console.warn("⚠️ Backend không phản hồi hoặc lỗi xác thực, chuyển sang fallback Firestore...", error?.message);
+
+      // 2. Chế độ dự phòng (Fallback): Tra cứu trực tiếp Firestore
+      try {
+        const q = query(
+          collection(db, "users"),
+          where("username", "==", username.trim())
+        );
+
+        const querySnapshot = await getDocs(q);
+
+        if (querySnapshot.empty) {
+          Alert.alert("Đăng nhập thất bại", "Tài khoản không tồn tại trên hệ thống!");
+          setIsLoading(false);
+          return;
+        }
+
+        const userDoc = querySnapshot.docs[0];
+        const userData = userDoc.data();
+
+        if (userData.password !== password) {
+          Alert.alert("Đăng nhập thất bại", "Mật khẩu không chính xác!");
+          setIsLoading(false);
+          return;
+        }
+
+        await login({
+          userId: userDoc.id,
+          ...userData,
+        });
+
+        navigation.replace("App");
+      } catch (fbErr) {
+        console.error("Lỗi Firestore:", fbErr);
+        Alert.alert("Lỗi kết nối", "Vui lòng kiểm tra lại kết nối mạng hoặc máy chủ.");
+      }
     } finally {
       setIsLoading(false);
     }

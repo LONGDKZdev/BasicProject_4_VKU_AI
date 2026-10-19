@@ -7,7 +7,7 @@ set "APP_URL=http://localhost:8080/"
 
 echo.
 echo =====================================================
-echo   FLASHCARD AI - Study Space (Spring Boot + Firestore)
+echo   FLASHCARD AI - flashcard AI (Spring Boot + Firestore)
 echo   Starting development server...
 echo =====================================================
 echo.
