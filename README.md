@@ -59,6 +59,7 @@ Hệ thống hỗ trợ học tập và ghi nhớ từ vựng tiếng Anh toàn 
 
 ## 📁 CẤU TRÚC THƯ MỤC THỰC TẾ CỦA DỰ ÁN
 
+```text
 flashcard_ai/
 ├── flashcardAI_Web/                             # Module Backend Spring Boot & Web Admin
 │   ├── src/main/java/com/vku/flashcard_ai/
@@ -102,7 +103,6 @@ flashcard_ai/
     ├── package.json                             # Dependencies Expo SDK 57
     ├── app.json                                 # Cấu hình Expo Project
     └── index.js                                 # Điểm khởi chạy Root của ứng dụng di động
-
 ---
 
 ## 🚀 HƯỚNG DẪN CÀI ĐẶT VÀ KHỞI CHẠY
