@@ -1,5 +1,10 @@
 package com.vku.flashcard_ai.modules.ai;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.vku.flashcard_ai.modules.ai.engine.PersonalAiEngine;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;
 import org.springframework.stereotype.Service;
@@ -15,6 +20,13 @@ public class AiService {
     private List<String> apiKeys;
 
     private final Random random = new Random();
+    private final ObjectMapper objectMapper;
+    private final PersonalAiEngine personalAiEngine;
+
+    public AiService(ObjectMapper objectMapper, PersonalAiEngine personalAiEngine) {
+        this.objectMapper = objectMapper;
+        this.personalAiEngine = personalAiEngine;
+    }
 
     public String getCurrentApiKey() {
         if (apiKeys == null || apiKeys.isEmpty() || apiKeys.get(0).contains("Placeholder")) {
@@ -42,12 +54,10 @@ public class AiService {
         );
     }
 
-    // 1. Phương thức gọi Gemini mặc định
     public String callAiModel(String prompt) {
         return callAiModelWithHistory(prompt, "[]");
     }
 
-    // 2. Gọi Gemini API kèm theo Memory lịch sử trò chuyện bằng Java thuần
     public String callAiModelWithHistory(String prompt, String messagesJson) {
         String activeKey = getCurrentApiKey();
         if (activeKey.equals("DEFAULT_KEY")) {
@@ -56,63 +66,45 @@ public class AiService {
 
         try {
             String url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent";
-            
+
             RestTemplate restTemplate = new RestTemplate();
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_JSON);
             headers.set("x-goog-api-key", activeKey);
 
-            StringBuilder contentsJson = new StringBuilder("[");
+            ObjectNode rootPayload = objectMapper.createObjectNode();
+            ArrayNode contentsArray = rootPayload.putArray("contents");
 
-            // Xử lý trích xuất mảng tin nhắn bằng chuỗi thuần Java
-            if (messagesJson != null && !messagesJson.equals("[]") && !messagesJson.trim().isEmpty()) {
+            if (messagesJson != null && !messagesJson.trim().isEmpty() && !messagesJson.trim().equals("[]")) {
                 try {
-                    String[] items = messagesJson.substring(1, messagesJson.length() - 1).split("(?<=\\}),\\s*(?=\\{)");
-                    int startIdx = Math.max(0, items.length - 8); // Lấy tối đa 8 câu gần nhất
+                    JsonNode historyNode = objectMapper.readTree(messagesJson);
+                    if (historyNode.isArray() && historyNode.size() > 0) {
+                        int total = historyNode.size();
+                        int startIdx = Math.max(0, total - 8);
 
-                    for (int i = startIdx; i < items.length; i++) {
-                        String item = items[i].trim();
-                        if (item.isEmpty()) continue;
+                        for (int i = startIdx; i < total; i++) {
+                            JsonNode item = historyNode.get(i);
+                            String sender = item.path("sender").asText("user");
+                            String contentText = item.path("content").asText("");
+                            if (contentText.isEmpty()) continue;
 
-                        String sender = "user";
-                        if (item.contains("\"sender\":\"ai\"") || item.contains("\"sender\": \"ai\"")) {
-                            sender = "model";
-                        }
-
-                        int contentIndex = item.indexOf("\"content\":");
-                        if (contentIndex != -1) {
-                            int startQuote = item.indexOf("\"", contentIndex + 10);
-                            if (startQuote != -1) {
-                                int endQuote = startQuote + 1;
-                                boolean escaped = false;
-                                while (endQuote < item.length()) {
-                                    char c = item.charAt(endQuote);
-                                    if (c == '\\' && !escaped) {
-                                        escaped = true;
-                                    } else if (c == '"' && !escaped) {
-                                        break;
-                                    } else {
-                                        escaped = false;
-                                    }
-                                    endQuote++;
-                                }
-
-                                if (endQuote < item.length()) {
-                                    String contentText = item.substring(startQuote + 1, endQuote);
-                                    contentsJson.append("{\"role\":\"").append(sender)
-                                                .append("\",\"parts\":[{\"text\":\"").append(contentText).append("\"}]},");
-                                }
-                            }
+                            String role = "ai".equalsIgnoreCase(sender) ? "model" : "user";
+                            ObjectNode msgObj = contentsArray.addObject();
+                            msgObj.put("role", role);
+                            ArrayNode parts = msgObj.putArray("parts");
+                            parts.addObject().put("text", contentText);
                         }
                     }
-                } catch (Exception e) {
-                    e.printStackTrace();
+                } catch (Exception parseEx) {
+                    System.err.println("⚠️ Lỗi đọc lịch sử chat JSON: " + parseEx.getMessage());
                 }
             }
 
-            contentsJson.append("{\"role\":\"user\",\"parts\":[{\"text\":" + escapeJson(prompt) + "}]}]");
+            ObjectNode currentUserMsg = contentsArray.addObject();
+            currentUserMsg.put("role", "user");
+            currentUserMsg.putArray("parts").addObject().put("text", prompt);
 
-            String requestBody = "{\"contents\":" + contentsJson.toString() + "}";
+            String requestBody = objectMapper.writeValueAsString(rootPayload);
 
             HttpEntity<String> entity = new HttpEntity<>(requestBody, headers);
             ResponseEntity<String> response = restTemplate.postForEntity(url, entity, String.class);
@@ -121,66 +113,37 @@ public class AiService {
                 return extractTextFromGeminiResponse(response.getBody());
             }
         } catch (org.springframework.web.client.HttpServerErrorException.ServiceUnavailable e) {
-            System.err.println(" Gemini API 503: Máy chủ AI đang quá tải tạm thời.");
-            return " Máy chủ AI hiện đang bận do lượng truy cập cao. Vui lòng bấm gửi lại sau vài giây!";
+            System.err.println("Gemini API 503: Máy chủ AI đang quá tải tạm thời.");
+            return "Máy chủ AI hiện đang bận do lượng truy cập cao. Vui lòng bấm gửi lại sau vài giây!";
         } catch (Exception e) {
             e.printStackTrace();
-            return " Lỗi khi kết nối với AI: " + e.getMessage();
+            return "Lỗi khi kết nối với AI: " + e.getMessage();
         }
-
-        
 
         return "{}";
     }
 
     public String callCustomMachineLearningModel(String prompt) {
-    String lower = prompt.toLowerCase();
-    
-    if (lower.contains("tạo") && (lower.contains("từ vựng") || lower.contains("flashcard"))) {
-        return "{\n" +
-                "  \"englishVocabulary\": \"Adaptability\",\n" +
-                "  \"vietnameseVocabulary\": \"Khả năng thích ứng\",\n" +
-                "  \"example\": \"Adaptability is an essential skill in modern workplaces. Dịch: Khả năng thích ứng là một kỹ năng cần thiết trong môi trường làm việc hiện đại.\",\n" +
-                "  \"pronunciation\": \"/əˌdæp.təˈbɪl.ə.ti/\",\n" +
-                "  \"wordPos\": \"(n)\"\n" +
-                "}";
-    }
-    
-    if (lower.contains("chào") || lower.contains("hi") || lower.contains("hello")) {
-        return "Xin chào! Tôi là Trợ lý AI Offline nội bộ của flashcard AI. Tôi có thể hỗ trợ tạo mẫu câu và trích xuất cấu trúc flashcard trực tiếp mà không cần mạng Internet.";
+        return personalAiEngine.processRequest(prompt, "anonymous", "[]", "");
     }
 
-    return "🧠 [flashcard AI Offline Engine]: Tôi đã phân tích câu hỏi của bạn: \"" + prompt + "\". Hãy nhập yêu cầu dạng 'Tạo từ vựng chủ đề [Tên]' để tôi tự động xuất flashcard nhé!";
-}
-
-    private String escapeJson(String text) {
-        return "\"" + text.replace("\\", "\\\\").replace("\"", "\\\"").replace("\n", "\\n").replace("\r", "") + "\"";
+    public String callCustomMachineLearningModel(String prompt, String username, String historyMessagesJson, String sessionTitle) {
+        return personalAiEngine.processRequest(prompt, username, historyMessagesJson, sessionTitle);
     }
 
     private String extractTextFromGeminiResponse(String json) {
         try {
-            int textIndex = json.indexOf("\"text\": \"");
-            if (textIndex != -1) {
-                int startIndex = textIndex + 9;
-                int endIndex = startIndex;
-                boolean escaped = false;
-                
-                while (endIndex < json.length()) {
-                    char c = json.charAt(endIndex);
-                    if (c == '\\' && !escaped) {
-                        escaped = true;
-                    } else if (c == '"' && !escaped) {
-                        break;
-                    } else {
-                        escaped = false;
-                    }
-                    endIndex++;
-                }
-                
-                String extracted = json.substring(startIndex, endIndex);
-                extracted = extracted.replace("\\n", "\n").replace("\\\"", "\"").replace("\\\\", "\\");
-                extracted = extracted.replaceAll("```json", "").replaceAll("```", "").trim();
-                return extracted;
+            JsonNode root = objectMapper.readTree(json);
+            JsonNode textNode = root.path("candidates")
+                    .path(0)
+                    .path("content")
+                    .path("parts")
+                    .path(0)
+                    .path("text");
+
+            if (!textNode.isMissingNode()) {
+                String extracted = textNode.asText();
+                return extracted.replace("```json", "").replace("```", "").trim();
             }
         } catch (Exception e) {
             e.printStackTrace();

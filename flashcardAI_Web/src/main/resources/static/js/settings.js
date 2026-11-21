@@ -13,7 +13,7 @@ document.addEventListener("DOMContentLoaded", function () {
         { key: "avatar_9", icon: "🦄", label: "Kỳ lân" },
         { key: "avatar_10", icon: "🐧", label: "Chim cánh cụt" },
         { key: "avatar_11", icon: "🐸", label: "Ếch xanh" },
-        { key: "avatar_12", icon: "💀", label: "đầu lâu" }
+        { key: "avatar_12", icon: "💀", label: "Đầu lâu" }
     ];
 
     let selectedAvatarKey = "avatar_0";
@@ -38,11 +38,6 @@ document.addEventListener("DOMContentLoaded", function () {
     const inputConfirmPass = document.getElementById("confirm-new-password");
     const btnChangePassword = document.getElementById("btn-change-password");
 
-    const selectVoiceLang = document.getElementById("pref-voice-lang");
-    const selectVoiceRate = document.getElementById("pref-voice-rate");
-    const checkAutoSpeak = document.getElementById("pref-auto-speak");
-    const btnSavePref = document.getElementById("btn-save-preferences");
-
     // 1. Chuyển đổi Tab
     navLinks.forEach((link) => {
         link.addEventListener("click", function (e) {
@@ -61,6 +56,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
     // 2. Render danh sách Avatar
     function renderAvatarPicker() {
+        if (!avatarListContainer) return;
         avatarListContainer.innerHTML = "";
         AVATARS.forEach((av) => {
             const el = document.createElement("div");
@@ -191,7 +187,6 @@ document.addEventListener("DOMContentLoaded", function () {
     renderAvatarPicker();
     loadUserProfile();
     loadUserStats();
-    loadPreferences();
 
     // Xử lý Quên mật khẩu & Gửi mail
     const linkForgotPass = document.getElementById("link-forgot-pass");

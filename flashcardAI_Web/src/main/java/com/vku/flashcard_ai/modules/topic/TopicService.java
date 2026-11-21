@@ -1,13 +1,15 @@
 package com.vku.flashcard_ai.modules.topic;
 
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.DeserializationFeature;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.api.core.ApiFuture;
 import com.google.cloud.firestore.*;
 import com.google.firebase.cloud.FirestoreClient;
+import com.vku.flashcard_ai.modules.flashcard.Flashcard;
 import org.springframework.stereotype.Service;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.UUID;
+import java.util.*;
 import java.util.concurrent.ExecutionException;
 
 @Service
@@ -15,6 +17,12 @@ import java.util.concurrent.ExecutionException;
 public class TopicService {
 
     private static final String COLLECTION_NAME = "topics";
+    private final ObjectMapper objectMapper;
+
+    public TopicService(ObjectMapper objectMapper) {
+        this.objectMapper = objectMapper.copy()
+                .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+    }
 
     public String getUserIdByUsername(String username) {
         try {
@@ -31,17 +39,16 @@ public class TopicService {
         } catch (Exception e) {
             e.printStackTrace();
         }
-        return username; 
+        return username;
     }
 
     // 1. Lấy danh sách sắp xếp ưu tiên bộ thẻ vừa thao tác lên đầu
     public List<Topic> getTopicsByUser(String userId) throws ExecutionException, InterruptedException {
         Firestore db = FirestoreClient.getFirestore();
-        // Bỏ orderBy ở Firestore Query để tránh lỗi Composite Index
         ApiFuture<QuerySnapshot> future = db.collection(COLLECTION_NAME)
                 .whereEqualTo("userId", userId)
                 .get();
-        
+
         List<QueryDocumentSnapshot> documents = future.get().getDocuments();
         List<Topic> topics = new ArrayList<>();
         for (DocumentSnapshot doc : documents) {
@@ -50,23 +57,32 @@ public class TopicService {
                 topics.add(topic);
             }
         }
-        
-        // Sắp xếp orderIndex giảm dần (thẻ mới nhất/vừa sửa lên đầu) bằng Java thuần
+
+        // Sắp xếp orderIndex giảm dần (thẻ mới nhất/vừa sửa lên đầu) trên RAM
         topics.sort((a, b) -> Long.compare(b.getOrderIndex(), a.getOrderIndex()));
-        
+
         return topics;
     }
 
     public String saveTopic(Topic topic) throws ExecutionException, InterruptedException {
         Firestore db = FirestoreClient.getFirestore();
         boolean isNew = (topic.getTopicId() == null || topic.getTopicId().isEmpty());
-        
+
         if (isNew) {
             topic.setTopicId(UUID.randomUUID().toString());
             topic.setCreatedAt(System.currentTimeMillis());
         }
-        
-        db.collection(COLLECTION_NAME).document(topic.getTopicId()).set(topic);
+
+        // Chuẩn hóa và đếm chính xác số lượng thẻ bằng ObjectMapper trước khi lưu
+        List<Flashcard> parsedCards = parseFlashcardList(topic.getDataJson());
+        try {
+            topic.setDataJson(objectMapper.writeValueAsString(parsedCards));
+            if (!parsedCards.isEmpty() || (topic.getDataJson() != null && topic.getDataJson().equals("[]") && !isNew)) {
+                topic.setCount(parsedCards.size());
+            }
+        } catch (Exception ignored) {}
+
+        db.collection(COLLECTION_NAME).document(topic.getTopicId()).set(topic).get();
 
         // Đồng bộ đổi tên toàn bộ nhóm chat bên ai_chat_histories nếu đổi tên Topic
         if (!isNew && topic.getName() != null) {
@@ -75,7 +91,7 @@ public class TopicService {
                 renameChatSessionFromTopic(originChatId, topic.getName());
             } catch (Exception ignored) {}
         }
-        
+
         return "Topic saved successfully!";
     }
 
@@ -101,7 +117,7 @@ public class TopicService {
         }
     }
 
-    // Nối JSON từ vựng mới vào Topic và TỰ ĐỘNG LỌC TRÙNG TỪ VỰNG
+    // Nối JSON từ vựng mới vào Topic và TỰ ĐỘNG LỌC TRÙNG TỪ VỰNG bằng Jackson ObjectMapper
     public String appendJsonToTopic(String topicId, String rawInputJson) throws ExecutionException, InterruptedException {
         Firestore db = FirestoreClient.getFirestore();
         DocumentReference docRef = db.collection(COLLECTION_NAME).document(topicId);
@@ -114,119 +130,100 @@ public class TopicService {
         Topic topic = doc.toObject(Topic.class);
         String existingJson = (topic != null && topic.getDataJson() != null) ? topic.getDataJson().trim() : "[]";
 
-        // 1. Dọn dẹp chuỗi đầu vào & Giải mã HTML entities nếu có
-        String cleanInput = rawInputJson.replaceAll("```json", "").replaceAll("```", "").trim();
-        cleanInput = cleanInput.replace("&quot;", "\"")
-                                .replace("&#34;", "\"")
-                                .replace("&amp;", "&")
-                                .replace("&lt;", "<")
-                                .replace("&gt;", ">")
-                                .replace("&#39;", "'");
+        // 1. Parse danh sách thẻ hiện có và danh sách thẻ mới bằng ObjectMapper
+        List<Flashcard> existingCards = parseFlashcardList(existingJson);
+        List<Flashcard> incomingCards = parseFlashcardList(rawInputJson);
 
-        if (!cleanInput.startsWith("[")) cleanInput = "[" + cleanInput;
-        if (!cleanInput.endsWith("]")) cleanInput = cleanInput + "]";
-        cleanInput = cleanInput.replaceAll("(?<=\\}\\s*)(?=\\{)", ",");
+        if (incomingCards.isEmpty()) {
+            return "Dữ liệu JSON không hợp lệ hoặc không chứa thẻ từ vựng nào!";
+        }
 
-        // 2. Trích xuất mảng từ vựng cũ
-        List<String> existingVocabs = extractEnglishVocabularies(existingJson);
-        
-        // 3. Tách các object từ vựng mới và chỉ giữ lại từ CHƯA TRÙNG
-        List<String> validNewObjects = new ArrayList<>();
-        int duplicateCount = 0;
-
-        // Tách các khối object {...} bằng Java thuần
-        String[] newItems = cleanInput.substring(1, cleanInput.length() - 1).split("(?<=\\}),\\s*(?=\\{)");
-
-        for (String item : newItems) {
-            String cleanItem = item.trim();
-            if (cleanItem.isEmpty()) continue;
-            if (!cleanItem.startsWith("{")) cleanItem = "{" + cleanItem;
-            if (!cleanItem.endsWith("}")) cleanItem = cleanItem + "}";
-
-            // Lấy từ tiếng Anh của thẻ mới
-            String engVocab = extractSingleEnglishVocabulary(cleanItem);
-
-            if (!engVocab.isEmpty() && existingVocabs.contains(engVocab.toLowerCase())) {
-                duplicateCount++; // Phát hiện trùng từ
-            } else {
-                validNewObjects.add(cleanItem);
-                if (!engVocab.isEmpty()) {
-                    existingVocabs.add(engVocab.toLowerCase());
-                }
+        // 2. Tạo tập hợp các từ tiếng Anh đã tồn tại (chữ thường) để tra cứu O(1)
+        Set<String> existingVocabSet = new HashSet<>();
+        for (Flashcard card : existingCards) {
+            if (card.getEnglishVocabulary() != null && !card.getEnglishVocabulary().trim().isEmpty()) {
+                existingVocabSet.add(card.getEnglishVocabulary().trim().toLowerCase());
             }
         }
 
-        if (validNewObjects.isEmpty()) {
+        // 3. Lọc bỏ từ trùng lặp và thêm từ mới
+        int addedCount = 0;
+        int duplicateCount = 0;
+
+        for (Flashcard newCard : incomingCards) {
+            String eng = (newCard.getEnglishVocabulary() != null) ? newCard.getEnglishVocabulary().trim() : "";
+            if (eng.isEmpty()) continue;
+
+            String normalizedKey = eng.toLowerCase();
+            if (existingVocabSet.contains(normalizedKey)) {
+                duplicateCount++;
+            } else {
+                existingCards.add(newCard);
+                existingVocabSet.add(normalizedKey);
+                addedCount++;
+            }
+        }
+
+        if (addedCount == 0) {
             return "Tất cả các từ vựng này đều đã tồn tại trong bộ Flashcard!";
         }
 
-        // 4. Ghép mảng dữ liệu mới đã lọc trùng
-        String newlyAddedString = String.join(",", validNewObjects);
-        String mergedJson = "[]";
-
-        if (existingJson.equals("[]") || existingJson.isEmpty()) {
-            mergedJson = "[" + newlyAddedString + "]";
-        } else {
-            String coreExisting = existingJson.substring(1, existingJson.length() - 1).trim();
-            boolean needsComma = !coreExisting.endsWith(",") && !newlyAddedString.startsWith(",");
-            mergedJson = "[" + coreExisting + (needsComma ? "," : "") + newlyAddedString + "]";
-        }
-
-        // 5. Đếm lại tổng số từ vựng
-        int totalCount = 0;
-        if (mergedJson.length() > 2) {
-            totalCount = mergedJson.length() - mergedJson.replace("{\"englishVocabulary\"", "").length();
-            if (totalCount == 0) {
-                totalCount = mergedJson.length() - mergedJson.replace("{", "").length();
-            }
-        }
-
-        // Đẩy orderIndex lên mốc thời gian hiện tại để nhảy lên đầu
-        long newOrderIndex = System.currentTimeMillis();
-        docRef.update("dataJson", mergedJson, "count", totalCount, "orderIndex", newOrderIndex);
-
-        if (duplicateCount > 0) {
-            return String.format("Đã thêm thành công %d từ mới (Đã bỏ qua %d từ bị trùng)!", validNewObjects.size(), duplicateCount);
-        } else {
-            return String.format("Đã thêm thành công toàn bộ %d từ vựng vào Flashcard!", validNewObjects.size());
-        }
-    }
-
-    // Hàm phụ trợ: Lấy danh sách từ tiếng Anh trong mảng JSON
-    private List<String> extractEnglishVocabularies(String jsonArrayStr) {
-        List<String> list = new ArrayList<>();
-        if (jsonArrayStr == null || jsonArrayStr.length() <= 2) return list;
-
-        String[] items = jsonArrayStr.substring(1, jsonArrayStr.length() - 1).split("(?<=\\}),\\s*(?=\\{)");
-        for (String item : items) {
-            String vocab = extractSingleEnglishVocabulary(item);
-            if (!vocab.isEmpty()) {
-                list.add(vocab.toLowerCase());
-            }
-        }
-        return list;
-    }
-
-    // Hàm phụ trợ: Trích xuất trường "englishVocabulary" của 1 object
-    private String extractSingleEnglishVocabulary(String singleJsonObj) {
+        // 4. Serialize lại thành chuỗi JSON chuẩn và cập nhật Firestore
         try {
-            int keyIndex = singleJsonObj.indexOf("\"englishVocabulary\"");
-            if (keyIndex != -1) {
-                int colonIndex = singleJsonObj.indexOf(":", keyIndex);
-                if (colonIndex != -1) {
-                    int startQuote = singleJsonObj.indexOf("\"", colonIndex + 1);
-                    if (startQuote != -1) {
-                        int endQuote = singleJsonObj.indexOf("\"", startQuote + 1);
-                        if (endQuote != -1) {
-                            return singleJsonObj.substring(startQuote + 1, endQuote).trim();
-                        }
-                    }
-                }
+            String mergedJson = objectMapper.writeValueAsString(existingCards);
+            int totalCount = existingCards.size();
+            long newOrderIndex = System.currentTimeMillis();
+
+            docRef.update(
+                    "dataJson", mergedJson,
+                    "count", totalCount,
+                    "orderIndex", newOrderIndex
+            ).get();
+
+            if (duplicateCount > 0) {
+                return String.format("Đã thêm thành công %d từ mới (Đã bỏ qua %d từ bị trùng)!", addedCount, duplicateCount);
+            } else {
+                return String.format("Đã thêm thành công toàn bộ %d từ vựng vào Flashcard!", addedCount);
             }
-        } catch (Exception ignored) {}
-        return "";
+        } catch (Exception e) {
+            e.printStackTrace();
+            return "Lỗi chuẩn hóa dữ liệu JSON: " + e.getMessage();
+        }
     }
-    
+
+    // Hàm dùng chung: Làm sạch chuỗi đầu vào và parse thành List<Flashcard> bằng Jackson
+    public List<Flashcard> parseFlashcardList(String rawJson) {
+        if (rawJson == null || rawJson.trim().isEmpty() || rawJson.trim().equals("[]") || rawJson.trim().equals("null")) {
+            return new ArrayList<>();
+        }
+
+        String cleanInput = rawJson
+                .replace("```json", "")
+                .replace("```", "")
+                .replace("&quot;", "\"")
+                .replace("&#34;", "\"")
+                .replace("&amp;", "&")
+                .replace("&lt;", "<")
+                .replace("&gt;", ">")
+                .replace("&#39;", "'")
+                .trim();
+
+        // Xóa ngoặc vuông dư ở hai đầu nếu có, vá lỗi thiếu dấu phẩy giữa các object }{ và bọc lại chuẩn mảng
+        cleanInput = cleanInput.replaceAll("^\\[+", "").replaceAll("\\]+$", "").trim();
+        if (cleanInput.isEmpty()) {
+            return new ArrayList<>();
+        }
+        cleanInput = cleanInput.replaceAll("(?<=\\})\\s*(?=\\{)", ",");
+        cleanInput = "[" + cleanInput + "]";
+
+        try {
+            return objectMapper.readValue(cleanInput, new TypeReference<List<Flashcard>>() {});
+        } catch (Exception e) {
+            System.err.println("⚠️ Không thể parse JSON Flashcard: " + e.getMessage());
+            return new ArrayList<>();
+        }
+    }
+
     public String deleteTopic(String topicId) {
         Firestore db = FirestoreClient.getFirestore();
         db.collection(COLLECTION_NAME).document(topicId).delete();

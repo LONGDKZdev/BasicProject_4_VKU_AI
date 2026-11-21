@@ -39,4 +39,4 @@ REM Chạy ứng dụng Spring Boot
 call .\mvnw.cmd spring-boot:run
 
 pause
-exit /b 0
+exit /b 

@@ -1,0 +1,369 @@
+<!doctype html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Kiểm tra Từ vựng - flashcard AI</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
+    <link href="https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css" rel="stylesheet" />
+    <link rel="stylesheet" th:href="@{/css/toast.css}" />
+    <style>
+        body {
+            background-color: #fcf8f2;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            min-height: 100vh;
+        }
+
+        .quiz-box {
+            max-width: 680px;
+            margin: 40px auto;
+            background: #ffffff;
+            border-radius: 24px;
+            border: 1px solid #eae2d8;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
+            padding: 32px;
+        }
+
+        .option-btn {
+            text-align: left;
+            padding: 14px 20px;
+            border-radius: 14px;
+            border: 2px solid #e2e8f0;
+            background: #ffffff;
+            font-weight: 600;
+            color: #1e293b;
+            transition: all 0.2s ease;
+        }
+
+        .option-btn:hover:not(:disabled) {
+            border-color: #0d6efd;
+            background-color: #eff6ff;
+        }
+
+        .option-btn.correct {
+            border-color: #10b981 !important;
+            background-color: #d1fae5 !important;
+            color: #065f46 !important;
+        }
+
+        .option-btn.wrong {
+            border-color: #ef4444 !important;
+            background-color: #fee2e2 !important;
+            color: #991b1b !important;
+        }
+    </style>
+</head>
+
+<body>
+    <!-- Header -->
+    <header class="bg-white shadow-sm d-flex justify-content-between align-items-center px-4 py-3 sticky-top">
+        <div class="d-flex align-items-center gap-2">
+            <span class="badge bg-primary rounded-pill px-3 py-2 fs-6" id="round-badge">Vòng 1</span>
+            <h5 class="fw-bold m-0 text-dark" id="test-topic-title">Đang tải chủ đề...</h5>
+        </div>
+        <button id="btn-back-study" class="btn btn-outline-secondary rounded-pill fw-bold px-4">
+            <i class="bx bx-arrow-back me-1"></i> Quay lại học thẻ
+        </button>
+    </header>
+
+    <div class="container px-3">
+        <!-- Khung làm bài -->
+        <div class="quiz-box" id="quiz-container">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <span class="text-muted fw-semibold small" id="question-counter">Câu 1 / 10</span>
+                <span class="badge bg-success-subtle text-success rounded-pill px-3 py-1" id="score-counter">Đúng:
+                    0</span>
+            </div>
+
+            <div class="progress mb-4" style="height: 8px;">
+                <div class="progress-bar bg-primary" id="quiz-progress-bar" style="width: 0%;"></div>
+            </div>
+
+            <!-- Nội dung câu hỏi -->
+            <div class="text-center py-4 px-3 bg-light rounded-4 mb-4">
+                <span class="text-muted small d-block mb-2" id="question-hint">Chọn nghĩa tiếng Việt đúng nhất</span>
+                <h2 class="fw-bold text-dark mb-2" id="question-main-text">...</h2>
+                <div id="question-sub-area" class="mt-2"></div>
+            </div>
+
+            <!-- Khu vực trả lời Trắc nghiệm (Vòng 1, 2) -->
+            <div id="mcq-options" class="d-flex flex-column gap-3"></div>
+
+            <!-- Khu vực trả lời Tự luận điền từ (Vòng 3, 4) -->
+            <div id="typing-area" class="d-none">
+                <div class="input-group input-group-lg mb-3">
+                    <input type="text" id="typing-input" class="form-control bg-light border-0 fw-bold text-center"
+                        placeholder="Nhập từ vựng tiếng Anh..." autocomplete="off" />
+                    <button class="btn btn-primary fw-bold px-4" id="btn-check-typing">Kiểm tra</button>
+                </div>
+                <div id="typing-feedback" class="text-center fw-bold small mb-2"></div>
+            </div>
+
+            <div class="text-end mt-4">
+                <button id="btn-next-question" class="btn btn-dark rounded-pill px-4 fw-bold d-none">
+                    Câu tiếp theo <i class="bx bx-right-arrow-alt ms-1"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- Khung kết quả cuối bài -->
+        <div class="quiz-box text-center d-none" id="result-container">
+            <div class="mb-3">
+                <i class="bx bx-trophy text-warning" style="font-size: 64px;" id="result-icon"></i>
+            </div>
+            <h3 class="fw-bold text-dark mb-2" id="result-title">Hoàn thành bài kiểm tra!</h3>
+            <p class="text-muted mb-4" id="result-subtitle">Kết quả của bạn đã được ghi nhận.</p>
+
+            <div class="p-4 bg-light rounded-4 mb-4">
+                <h1 class="fw-bold text-primary m-0" id="result-score-text">0 / 0 (0%)</h1>
+            </div>
+
+            <div class="d-flex justify-content-center gap-3">
+                <button id="btn-retry-quiz" class="btn btn-outline-primary rounded-pill px-4 fw-bold">
+                    <i class="bx bx-refresh me-1"></i> Làm lại vòng này
+                </button>
+                <button id="btn-finish-back" class="btn btn-primary rounded-pill px-4 fw-bold">
+                    Quay lại trang học <i class="bx bx-check ms-1"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script th:src="@{/js/toast.js}"></script>
+    <script>
+        document.addEventListener("DOMContentLoaded", async function () {
+            const params = new URLSearchParams(window.location.search);
+            const topicId = params.get("id") || localStorage.getItem("current_study_topic_id");
+            const round = parseInt(params.get("round") || "1", 10);
+
+            if (!topicId) {
+                window.location.href = "/";
+                return;
+            }
+
+            document.getElementById("round-badge").textContent = `Vòng ${round}`;
+            document.getElementById("btn-back-study").onclick = () => {
+                window.location.href = `/study-flashcard?id=${encodeURIComponent(topicId)}`;
+            };
+            document.getElementById("btn-finish-back").onclick = () => {
+                window.location.href = `/study-flashcard?id=${encodeURIComponent(topicId)}`;
+            };
+            document.getElementById("btn-retry-quiz").onclick = () => window.location.reload();
+
+            let vocabList = [];
+            try {
+                const res = await fetch("/api/topics");
+                const topics = await res.json();
+                const topic = topics.find(t => String(t.topicId) === String(topicId));
+                if (!topic) {
+                    window.location.href = "/";
+                    return;
+                }
+                document.getElementById("test-topic-title").textContent = topic.name;
+
+                let clean = (topic.dataJson || "[]").trim();
+                if (!clean.startsWith("[")) clean = "[" + clean + "]";
+                vocabList = JSON.parse(clean).map(item => ({
+                    english: String(item.englishVocabulary || item.english || "").trim(),
+                    vietnamese: String(item.vietnameseVocabulary || item.vietnamese || "").trim(),
+                    ipa: String(item.pronunciation || "").trim(),
+                    pos: String(item.wordPos || "").trim()
+                })).filter(w => w.english && w.vietnamese);
+            } catch (e) {
+                console.error(e);
+            }
+
+            if (vocabList.length === 0) {
+                alert("Chủ đề chưa có từ vựng để kiểm tra!");
+                window.location.href = `/study-flashcard?id=${encodeURIComponent(topicId)}`;
+                return;
+            }
+
+            // Xáo trộn danh sách câu hỏi
+            const questions = [...vocabList].sort(() => Math.random() - 0.5);
+            let currentIdx = 0;
+            let correctCount = 0;
+            let answered = false;
+
+            const els = {
+                qCounter: document.getElementById("question-counter"),
+                sCounter: document.getElementById("score-counter"),
+                pBar: document.getElementById("quiz-progress-bar"),
+                qHint: document.getElementById("question-hint"),
+                qMain: document.getElementById("question-main-text"),
+                qSub: document.getElementById("question-sub-area"),
+                mcqBox: document.getElementById("mcq-options"),
+                typingBox: document.getElementById("typing-area"),
+                typingInput: document.getElementById("typing-input"),
+                typingFeedback: document.getElementById("typing-feedback"),
+                btnCheckTyping: document.getElementById("btn-check-typing"),
+                btnNext: document.getElementById("btn-next-question")
+            };
+
+            function speak(text) {
+                if ("speechSynthesis" in window) {
+                    window.speechSynthesis.cancel();
+                    const u = new SpeechSynthesisUtterance(text);
+                    u.lang = "en-US";
+                    u.rate = 0.85;
+                    window.speechSynthesis.speak(u);
+                }
+            }
+
+            function renderQuestion() {
+                answered = false;
+                els.btnNext.classList.add("d-none");
+                els.mcqBox.innerHTML = "";
+                els.qSub.innerHTML = "";
+                els.typingFeedback.textContent = "";
+                els.typingInput.value = "";
+                els.typingInput.disabled = false;
+                els.btnCheckTyping.disabled = false;
+
+                const q = questions[currentIdx];
+                els.qCounter.textContent = `Câu ${currentIdx + 1} / ${questions.length}`;
+                els.sCounter.textContent = `Đúng: ${correctCount}`;
+                els.pBar.style.width = `${Math.round((currentIdx / questions.length) * 100)}%`;
+
+                if (round === 1 || round === 2) {
+                    els.mcqBox.classList.remove("d-none");
+                    els.typingBox.classList.add("d-none");
+
+                    const isEngToVie = (round === 1);
+                    els.qHint.textContent = isEngToVie
+                        ? "Chọn nghĩa tiếng Việt chính xác"
+                        : "Chọn từ tiếng Anh tương ứng";
+                    els.qMain.textContent = isEngToVie ? q.english : q.vietnamese;
+                    if (isEngToVie && q.ipa) {
+                        els.qSub.innerHTML = `<span class="text-muted font-monospace">${q.pos} ${q.ipa}</span>`;
+                    }
+
+                    // Tạo tối đa 4 đáp án
+                    const correctAnswer = isEngToVie ? q.vietnamese : q.english;
+                    let distractors = vocabList
+                        .map(item => isEngToVie ? item.vietnamese : item.english)
+                        .filter(val => val.toLowerCase() !== correctAnswer.toLowerCase());
+                    distractors = [...new Set(distractors)].sort(() => Math.random() - 0.5).slice(0, 3);
+
+                    const choices = [correctAnswer, ...distractors].sort(() => Math.random() - 0.5);
+                    choices.forEach(choice => {
+                        const btn = document.createElement("button");
+                        btn.className = "btn option-btn w-100";
+                        btn.textContent = choice;
+                        btn.addEventListener("click", () => {
+                            if (answered) return;
+                            answered = true;
+                            const allBtns = els.mcqBox.querySelectorAll(".option-btn");
+                            allBtns.forEach(b => {
+                                b.disabled = true;
+                                if (b.textContent === correctAnswer) b.classList.add("correct");
+                            });
+
+                            if (choice === correctAnswer) {
+                                correctCount++;
+                                els.sCounter.textContent = `Đúng: ${correctCount}`;
+                            } else {
+                                btn.classList.add("wrong");
+                            }
+                            els.btnNext.classList.remove("d-none");
+                        });
+                        els.mcqBox.appendChild(btn);
+                    });
+                } else {
+                    // Vòng 3 & 4: Tự luận gõ từ tiếng Anh
+                    els.mcqBox.classList.add("d-none");
+                    els.typingBox.classList.remove("d-none");
+
+                    if (round === 3) {
+                        els.qHint.textContent = "Gõ từ tiếng Anh dựa theo nghĩa và phiên âm dưới đây";
+                        els.qMain.textContent = q.vietnamese;
+                        els.qSub.innerHTML = `<span class="badge bg-white text-dark border font-monospace fs-6 px-3 py-2">${q.pos} ${q.ipa}</span>`;
+                    } else {
+                        els.qHint.textContent = "Nghe phát âm và gõ lại từ tiếng Anh chính xác";
+                        els.qMain.textContent = q.vietnamese;
+                        els.qSub.innerHTML = `
+              <button type="button" id="btn-listen-q" class="btn btn-primary rounded-pill px-4 py-2 fw-bold">
+                <i class="bx bx-volume-full me-1"></i> Nghe phát âm
+              </button>
+            `;
+                        document.getElementById("btn-listen-q").onclick = () => speak(q.english);
+                        speak(q.english);
+                    }
+                    setTimeout(() => els.typingInput.focus(), 100);
+                }
+            }
+
+            function verifyTyping() {
+                if (answered) return;
+                const userAns = els.typingInput.value.trim();
+                if (!userAns) return;
+
+                answered = true;
+                els.typingInput.disabled = true;
+                els.btnCheckTyping.disabled = true;
+
+                const target = questions[currentIdx].english;
+                if (userAns.toLowerCase() === target.toLowerCase()) {
+                    correctCount++;
+                    els.sCounter.textContent = `Đúng: ${correctCount}`;
+                    els.typingFeedback.className = "text-center fw-bold small mb-2 text-success";
+                    els.typingFeedback.innerHTML = `<i class="bx bx-check-circle me-1"></i> Chính xác: ${target}`;
+                } else {
+                    els.typingFeedback.className = "text-center fw-bold small mb-2 text-danger";
+                    els.typingFeedback.innerHTML = `<i class="bx bx-x-circle me-1"></i> Chưa đúng! Đáp án chuẩn là: <u>${target}</u>`;
+                }
+                els.btnNext.classList.remove("d-none");
+            }
+
+            els.btnCheckTyping.addEventListener("click", verifyTyping);
+            els.typingInput.addEventListener("keydown", (e) => {
+                if (e.key === "Enter") {
+                    e.preventDefault();
+                    if (!answered) verifyTyping();
+                    else els.btnNext.click();
+                }
+            });
+
+            els.btnNext.addEventListener("click", async () => {
+                currentIdx++;
+                if (currentIdx < questions.length) {
+                    renderQuestion();
+                } else {
+                    await showFinalResult();
+                }
+            });
+
+            async function showFinalResult() {
+                document.getElementById("quiz-container").classList.add("d-none");
+                document.getElementById("result-container").classList.remove("d-none");
+
+                const percent = Math.round((correctCount / questions.length) * 100);
+                document.getElementById("result-score-text").textContent = `${correctCount} / ${questions.length} (${percent}%)`;
+
+                if (percent >= 80) {
+                    document.getElementById("result-title").textContent = `Chúc mừng! Bạn đã vượt qua Vòng ${round}`;
+                    document.getElementById("result-subtitle").textContent = "Tiến độ hoàn thành đã được đồng bộ lên Cloud Firestore.";
+                    try {
+                        await fetch("/api/progress/complete", {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({ topicId: topicId, round: round })
+                        });
+                    } catch (err) {
+                        console.error("Lỗi lưu tiến độ:", err);
+                    }
+                } else {
+                    document.getElementById("result-icon").className = "bx bx-error-circle text-danger";
+                    document.getElementById("result-title").textContent = `Chưa đạt yêu cầu Vòng ${round}`;
+                    document.getElementById("result-subtitle").textContent = "Bạn cần đạt tối thiểu 80% câu trả lời đúng để hoàn thành vòng này.";
+                }
+            }
+
+            renderQuestion();
+        });
+    </script>
+</body>
+
+</html>

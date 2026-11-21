@@ -7,6 +7,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const modelSelect = document.getElementById('modelSelect');
     const historyList = document.getElementById('historyList');
     const newChatBtn = document.querySelector('.new-chat-btn');
+    const jsonBtn = document.querySelector('.json-btn');
 
     const urlParams = new URLSearchParams(window.location.search);
     const promptParam = urlParams.get('prompt');
@@ -29,6 +30,33 @@ document.addEventListener('DOMContentLoaded', function () {
             chatInput.style.height = (chatInput.scrollHeight) + 'px';
             chatInput.style.overflowY = 'hidden';
         }
+    }
+
+    // Xử lý sự kiện nút JSON trên thanh công cụ chat
+    if (jsonBtn && chatInput) {
+        jsonBtn.addEventListener('click', function () {
+            const currentVal = chatInput.value.trim();
+            if (!currentVal) {
+                const templateJson = `{\n  "englishVocabulary": "Example",\n  "vietnameseVocabulary": "Ví dụ",\n  "example": "This is an example sentence. Dịch: Đây là một câu ví dụ.",\n  "pronunciation": "/ɪɡˈzæmpəl/",\n  "wordPos": "(n)"\n}`;
+                chatInput.value = templateJson;
+                chatInput.focus();
+                autoResizeTextarea();
+                if (window.showToast) window.showToast("Đã chèn mẫu cấu trúc JSON Flashcard!", "success");
+                return;
+            }
+
+            try {
+                let clean = currentVal.replace(/```json/g, "").replace(/```/g, "").trim();
+                clean = clean.replace(/^\[+/, "").replace(/\]+$/, "").trim();
+                clean = clean.replace(/}\s*\{/g, "},\n{");
+                const parsed = JSON.parse("[" + clean + "]");
+                chatInput.value = parsed.map(item => JSON.stringify(item, null, 2)).join(",\n\n");
+                autoResizeTextarea();
+                if (window.showToast) window.showToast("Dữ liệu JSON đã được chuẩn hóa hợp lệ!", "success");
+            } catch (e) {
+                if (window.showToast) window.showToast("Nội dung hiện tại chưa đúng cú pháp JSON!", "warning");
+            }
+        });
     }
 
     // Nếu có tham số prompt trên URL (chuyển từ Flashcard qua)
@@ -110,7 +138,6 @@ document.addEventListener('DOMContentLoaded', function () {
                                 toolbarHtml = `<div class="ai-action-toolbar"><button class="ai-action-btn copy-json-btn" title="Sao chép JSON"><i class="bx bx-copy"></i></button><button class="ai-action-btn add-flashcard-btn" title="Thêm trực tiếp vào Flashcard"><i class="bx bx-plus-circle"></i></button></div>`;
                             }
 
-                            // Dòng ghép HTML liền mạch để không sinh khoảng trắng thừa
                             contentHtml = `${toolbarHtml}${badgeHtml}<div class="message-text">${escapeHtml(cleanContent)}</div>`;
                         } else {
                             contentHtml = escapeHtml(cleanContent);
@@ -138,22 +165,21 @@ document.addEventListener('DOMContentLoaded', function () {
             // 1. Nút Sao chép JSON
             if (e.target.closest('.copy-json-btn')) {
                 const msgEl = e.target.closest('.message');
-                const rawText = msgEl.getAttribute('data-raw');
+                const textEl = msgEl.querySelector('.message-text');
+                const rawText = textEl ? textEl.innerText.trim() : msgEl.getAttribute('data-raw');
                 if (rawText) {
                     navigator.clipboard.writeText(rawText);
                     if (window.showToast) window.showToast("Đã sao chép JSON vào bộ nhớ đệm!", "success");
                 }
             }
-            // 2. Nút Thêm trực tiếp vào Flashcard (Tự unescape và gắn đúng editTopicId)
+            // 2. Nút Thêm trực tiếp vào Flashcard
             else if (e.target.closest('.add-flashcard-btn')) {
                 const addBtn = e.target.closest('.add-flashcard-btn');
                 const msgEl = e.target.closest('.message');
-                
-                // Lấy nội dung text thuần bên trong .message-text để không bị dính HTML entities (&quot;)
+
                 const textEl = msgEl.querySelector('.message-text');
                 let rawText = textEl ? textEl.innerText.trim() : (msgEl.getAttribute('data-raw') || "");
 
-                // Dọn dẹp sơ bộ để đảm bảo trả về dấu ngoặc kép JSON chuẩn
                 rawText = rawText.replace(/&quot;/g, '"').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>');
 
                 const activeTopicId = currentTopicId || urlParams.get('topicId');
@@ -163,7 +189,6 @@ document.addEventListener('DOMContentLoaded', function () {
                     return;
                 }
 
-                // KHÓA CHỐNG SPAM
                 addBtn.disabled = true;
                 addBtn.style.pointerEvents = 'none';
                 const originalIcon = addBtn.innerHTML;
@@ -182,10 +207,9 @@ document.addEventListener('DOMContentLoaded', function () {
                         if (window.showToast) {
                             const isWarning = messageText.includes("Đã bỏ qua") || messageText.includes("đã tồn tại");
                             const toastType = isWarning ? "warning" : "success";
-                            
-                            // GẮN THAM SỐ editTopicId ĐỂ KHI CLICK SẼ MỞ THẲNG MODAL CHỈNH SỬA
+
                             window.showToast(
-                                `${messageText} <a href='/?editTopicId=${encodeURIComponent(activeTopicId)}' class='text-white text-decoration-underline fw-bold ms-2'>Mở chỉnh sửa <i class='bx bx-right-arrow-alt'></i></a>`, 
+                                `${messageText} <a href='/?editTopicId=${encodeURIComponent(activeTopicId)}' class='text-white text-decoration-underline fw-bold ms-2'>Mở chỉnh sửa <i class='bx bx-right-arrow-alt'></i></a>`,
                                 toastType
                             );
                         }
@@ -285,7 +309,6 @@ document.addEventListener('DOMContentLoaded', function () {
             const item = wrapper.querySelector('.history-item');
             const chatId = item.getAttribute('data-id');
 
-            // Mở Modal xác nhận Bootstrap thay cho confirm()
             const confirmModalEl = document.getElementById("confirmChatModal");
             const modalInstance = bootstrap.Modal.getInstance(confirmModalEl) || new bootstrap.Modal(confirmModalEl);
             const btnConfirm = document.getElementById("btnConfirmDeleteChat");

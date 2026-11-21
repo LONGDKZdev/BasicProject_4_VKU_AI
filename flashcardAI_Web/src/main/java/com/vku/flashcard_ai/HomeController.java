@@ -1,6 +1,7 @@
-package com.vku.flashcard_ai; // Hoặc package tương ứng của bạn
+package com.vku.flashcard_ai;
 
 import org.springframework.stereotype.Controller;
+import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 
@@ -16,9 +17,15 @@ public class HomeController {
     // Route điều hướng trang học lật thẻ
     @GetMapping("/study-flashcard")
     public String studyFlashcardPage() {
-        return "study_flashcard"; // Trỏ tới templates/study_flashcard.html
+        return "study_flashcard";
     }
-    
+
+    // Route điều hướng trang kiểm tra 4 vòng
+    @GetMapping("/test-flashcard")
+    public String testFlashcardPage() {
+        return "test_flashcard";
+    }
+
     // Trang Chat AI
     @GetMapping("/chat-ai")
     public String chatAiPage() {
@@ -36,8 +43,9 @@ public class HomeController {
     public String settingsPage() {
         return "settings";
     }
+
     @GetMapping("/reset-password")
-    public String resetPasswordPage(@RequestParam(name = "username", required = false) String username, org.springframework.ui.Model model) {
+    public String resetPasswordPage(@RequestParam(name = "username", required = false) String username, Model model) {
         model.addAttribute("username", username != null ? username : "");
         return "reset-password";
     }

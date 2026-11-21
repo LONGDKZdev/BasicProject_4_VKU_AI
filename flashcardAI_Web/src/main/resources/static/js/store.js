@@ -1,5 +1,6 @@
 document.addEventListener("DOMContentLoaded", function () {
     let PRESET_TOPICS = [];
+    let USER_TOPICS = [];
 
     const storeListEl = document.getElementById("store-list");
     const storeSearchEl = document.getElementById("store-search");
@@ -11,7 +12,15 @@ document.addEventListener("DOMContentLoaded", function () {
 
     let activePreviewTopic = null;
 
-    // 1. Tải danh sách chủ đề mẫu từ Firestore qua API
+    function loadUserTopics() {
+        fetch("/api/topics")
+            .then(res => res.ok ? res.json() : [])
+            .then(data => {
+                USER_TOPICS = data || [];
+            })
+            .catch(err => console.error("Lỗi nạp danh sách chủ đề cá nhân:", err));
+    }
+
     function loadSampleTopics() {
         fetch("/api/sample-topics")
             .then(res => res.json())
@@ -99,34 +108,72 @@ document.addEventListener("DOMContentLoaded", function () {
         previewModal.show();
     }
 
-    // Sao chép chủ đề mẫu vào kho chủ đề cá nhân
     async function importTopicToMyAccount(topic) {
         if (!topic) return;
 
-        const newTopicPayload = {
-            name: topic.name,
-            color: topic.color || "#60a5fa",
-            count: topic.count || 0,
-            dataJson: topic.dataJson || "[]",
-            orderIndex: 0
-        };
-
         try {
-            const res = await fetch("/api/topics", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(newTopicPayload)
-            });
+            const targetName = (topic.name || "").trim().toLowerCase();
+            const existingTopic = USER_TOPICS.find(
+                (t) => (t.name || "").trim().toLowerCase() === targetName
+            );
 
-            if (res.ok) {
-                if (window.showToast) {
-                    window.showToast(
-                        `Đã thêm <strong>${topic.name}</strong> vào bộ từ vựng của bạn! <a href="/" class="text-white text-decoration-underline ms-2 fw-bold">Về trang chủ</a>`,
-                        "success"
-                    );
+            if (existingTopic) {
+                const res = await fetch("/api/topics/append-json", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        topicId: existingTopic.topicId,
+                        json: topic.dataJson || "[]"
+                    })
+                });
+
+                const msg = await res.text();
+                if (res.ok) {
+                    loadUserTopics();
+                    const toastType = msg.includes("Đã bỏ qua") || msg.includes("đã tồn tại") ? "warning" : "success";
+                    if (window.showToast) {
+                        window.showToast(
+                            `[Chủ đề đã có sẵn] ${msg} <a href="/" class="text-white text-decoration-underline ms-2 fw-bold">Về trang chủ</a>`,
+                            toastType
+                        );
+                    }
+                } else {
+                    if (window.showToast) window.showToast(msg || "Không thể cập nhật từ vựng!", "danger");
                 }
             } else {
-                if (window.showToast) window.showToast("Không thể sao chép chủ đề!", "danger");
+                let cardCount = topic.count || 0;
+                try {
+                    let clean = (topic.dataJson || "[]").trim();
+                    if (!clean.startsWith("[")) clean = "[" + clean + "]";
+                    const arr = JSON.parse(clean);
+                    if (Array.isArray(arr)) cardCount = arr.length;
+                } catch (e) { }
+
+                const newTopicPayload = {
+                    name: topic.name,
+                    color: topic.color || "#60a5fa",
+                    count: cardCount,
+                    dataJson: topic.dataJson || "[]",
+                    orderIndex: Date.now()
+                };
+
+                const res = await fetch("/api/topics", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(newTopicPayload)
+                });
+
+                if (res.ok) {
+                    loadUserTopics();
+                    if (window.showToast) {
+                        window.showToast(
+                            `Đã thêm <strong>${topic.name}</strong> vào bộ từ vựng của bạn! <a href="/" class="text-white text-decoration-underline ms-2 fw-bold">Về trang chủ</a>`,
+                            "success"
+                        );
+                    }
+                } else {
+                    if (window.showToast) window.showToast("Không thể sao chép chủ đề!", "danger");
+                }
             }
         } catch (err) {
             console.error(err);
@@ -167,5 +214,6 @@ document.addEventListener("DOMContentLoaded", function () {
         });
     }
 
+    loadUserTopics();
     loadSampleTopics();
 });

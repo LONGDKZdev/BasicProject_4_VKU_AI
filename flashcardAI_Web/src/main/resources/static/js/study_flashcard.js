@@ -1,10 +1,10 @@
 document.addEventListener("DOMContentLoaded", function () {
   const STORAGE_STUDY_KEY = "study-space.flashcard-study.v1";
 
-    // --- KHAI BÁO ÂM THANH ---
+  // --- KHAI BÁO ÂM THANH ---
   const audioFlip = new Audio("/assets/sounds/flipcard.mp3");
-
   audioFlip.playbackRate = 1.8;
+
   function playAudio(audioObj) {
     if (!audioObj) return;
     audioObj.currentTime = 0;
@@ -13,17 +13,13 @@ document.addEventListener("DOMContentLoaded", function () {
       .catch((err) => console.log("Trình duyệt chặn phát âm thanh:", err));
   }
 
-  // ĐỔI SANG let ĐỂ CÓ THỂ GÁN LẠI KHI RELOAD
   const urlParams = new URLSearchParams(window.location.search);
   let topicId = urlParams.get("id");
 
   if (topicId) {
-    // Lưu vào localStorage để khi F5 / Reload không bị mất dữ liệu
     localStorage.setItem("current_study_topic_id", topicId);
-    // Xóa tham số ?id=... trên thanh địa chỉ URL
     window.history.replaceState({}, document.title, window.location.pathname);
   } else {
-    // Nếu Reload trang (không có id trên URL), lấy lại từ localStorage
     topicId = localStorage.getItem("current_study_topic_id");
   }
 
@@ -32,7 +28,7 @@ document.addEventListener("DOMContentLoaded", function () {
     window.location.href = "/";
     return;
   }
-// 🪄 ẨN ID TRÊN THANH ĐỊA CHỈ TRÌNH DUYỆT (CHỈ HIỂN THỊ /study-flashcard)
+
   window.history.replaceState({}, document.title, window.location.pathname);
 
   // DOM Elements
@@ -44,6 +40,7 @@ document.addEventListener("DOMContentLoaded", function () {
     btnPrevCard: document.getElementById("btn-prev-card"),
     btnNextCard: document.getElementById("btn-next-card"),
     btnCloseStudy: document.getElementById("btn-close-study"),
+    btnOpenTestRounds: document.getElementById("btn-open-test-rounds"),
     quickSelectDropdown: document.getElementById("quick-select-dropdown"),
   };
 
@@ -120,12 +117,14 @@ document.addEventListener("DOMContentLoaded", function () {
 
         els.studyTopicName.textContent = currentStudyTopic.name;
 
-        // Phục hồi phiên học cũ nếu có
         const savedState = JSON.parse(
           window.localStorage.getItem(STORAGE_STUDY_KEY)
         );
         if (savedState && String(savedState.topicId) === String(topicId)) {
           currentCardIndex = savedState.cardIndex || 0;
+          if (currentCardIndex >= currentStudyTopic.data.length) {
+            currentCardIndex = 0;
+          }
         }
 
         renderCarousel();
@@ -152,6 +151,11 @@ document.addEventListener("DOMContentLoaded", function () {
     els.btnCloseStudy.addEventListener("click", () => {
       window.location.href = "/";
     });
+    if (els.btnOpenTestRounds) {
+      els.btnOpenTestRounds.addEventListener("click", () => {
+        openTestRoundsModal(topicId);
+      });
+    }
     els.studyOverlay.addEventListener("click", () => collapseCurrentCard());
   }
 
@@ -331,15 +335,18 @@ document.addEventListener("DOMContentLoaded", function () {
     updateProgress();
     saveStudyState();
   }
+
   function goToNextCard() {
     currentCardIndex = (currentCardIndex + 1) % currentStudyTopic.data.length;
     updateCarouselPositions();
     updateProgress();
     saveStudyState();
   }
+
   function updateProgress() {
     els.studyProgress.textContent = `${currentCardIndex + 1} / ${currentStudyTopic.data.length}`;
   }
+
   function saveStudyState() {
     window.localStorage.setItem(
       STORAGE_STUDY_KEY,
@@ -376,168 +383,90 @@ document.addEventListener("DOMContentLoaded", function () {
     }
   }
 
-  function openTestRoundsModal(topicId) {
+  // Mở Modal 4 vòng kiểm tra & đồng bộ tiến độ trực tiếp từ Cloud Firestore
+  async function openTestRoundsModal(targetTopicId) {
     const container = document.getElementById("test-rounds-container");
     if (!container) return;
 
-    const offsets = [0, 1, 3, 6];
+    const roundDescriptions = [
+      { title: "Vòng 1: Nhận diện mặt chữ", desc: "Trắc nghiệm chọn nghĩa tiếng Việt (Anh → Việt)" },
+      { title: "Vòng 2: Phản xạ từ vựng", desc: "Trắc nghiệm chọn từ tiếng Anh tương ứng (Việt → Anh)" },
+      { title: "Vòng 3: Luyện viết chính tả", desc: "Gõ lại từ tiếng Anh dựa theo nghĩa và phiên âm IPA" },
+      { title: "Vòng 4: Nghe & Viết tổng hợp", desc: "Nghe phát âm chuẩn và điền từ vựng chính xác" }
+    ];
 
-    function getFormattedDateForInput(offset) {
-      const d = new Date();
-      d.setDate(d.getDate() + offset);
-      const yyyy = d.getFullYear();
-      const mm = String(d.getMonth() + 1).padStart(2, "0");
-      const dd = String(d.getDate()).padStart(2, "0");
-      return `${yyyy}-${mm}-${dd}`;
+    container.innerHTML = `<div class="text-center text-muted py-4"><i class="bx bx-loader-alt bx-spin fs-3"></i><p class="mt-2 small">Đang tải tiến độ từ máy chủ...</p></div>`;
+
+    const modalEl = document.getElementById("testRoundsModal");
+    let modal = bootstrap.Modal.getInstance(modalEl);
+    if (!modal) modal = new bootstrap.Modal(modalEl);
+    modal.show();
+
+    let completedRounds = [];
+    try {
+      const res = await fetch(`/api/progress/${encodeURIComponent(targetTopicId)}`);
+      if (res.ok) {
+        const progressData = await res.json();
+        completedRounds = progressData.completedRounds || [];
+      }
+    } catch (err) {
+      console.error("Lỗi nạp tiến độ:", err);
     }
 
-    function renderRounds() {
+    function renderRounds(doneList) {
       container.innerHTML = "";
-
-      const testProgress =
-        JSON.parse(localStorage.getItem("study-space.test-progress.v1")) || {};
-      const topicProgress = testProgress[topicId] || {};
-
       for (let i = 1; i <= 4; i++) {
-        const isDone = topicProgress[i] === true;
+        const isDone = doneList.includes(i);
         const statusBadge = isDone
-          ? `<span class="badge bg-success rounded-pill px-3 py-1">Đã làm</span>`
+          ? `<span class="badge bg-success rounded-pill px-3 py-1"><i class="bx bx-check me-1"></i>Đã hoàn thành</span>`
           : `<span class="badge bg-secondary text-white rounded-pill px-3 py-1">Chưa làm</span>`;
 
-        const defaultDate = getFormattedDateForInput(offsets[i - 1]);
-
+        const info = roundDescriptions[i - 1];
         const row = document.createElement("div");
-        row.className =
-          "d-flex justify-content-between align-items-center p-3 border rounded-3 bg-white shadow-sm";
+        row.className = "d-flex justify-content-between align-items-center p-3 border rounded-4 bg-white shadow-sm";
         row.innerHTML = `
-            <div class="d-flex align-items-center gap-3">
-              <h5 class="fw-bold m-0 text-dark">Vòng ${i}</h5>
+          <div>
+            <div class="d-flex align-items-center gap-2 mb-1">
+              <h6 class="fw-bold m-0 text-dark">${info.title}</h6>
               ${statusBadge}
             </div>
-            <div class="d-flex align-items-center gap-2">
-              <input type="date" class="form-control form-control-sm round-date-input d-none" value="${defaultDate}" style="width: 135px; border-radius: 8px;">
-              <button class="btn btn-dark fw-bold rounded-pill px-4 btn-start-round" data-round="${i}">
-                Kiểm tra <i class="bx bx-play ms-1"></i>
-              </button>
-            </div>
-          `;
+            <small class="text-muted">${info.desc}</small>
+          </div>
+          <button class="btn btn-dark fw-bold rounded-pill px-4 btn-start-round" data-round="${i}">
+            Kiểm tra <i class="bx bx-play ms-1"></i>
+          </button>
+        `;
 
-        // SỬA ĐƯỜNG DẪN KHÔNG DÙNG GẠCH DƯỚI DỄ DĨNH 404
         row.querySelector(".btn-start-round").addEventListener("click", () => {
-          window.location.href = `/test-flashcard?id=${topicId}&round=${i}`;
+          window.location.href = `/test-flashcard?id=${encodeURIComponent(targetTopicId)}&round=${i}`;
         });
 
         container.appendChild(row);
       }
     }
 
-    renderRounds();
+    renderRounds(completedRounds);
 
     const btnReset = document.getElementById("btn-reset-rounds");
     if (btnReset) {
       const newBtnReset = btnReset.cloneNode(true);
       btnReset.parentNode.replaceChild(newBtnReset, btnReset);
 
-      newBtnReset.addEventListener("click", () => {
-        if (
-          confirm(
-            "Bạn có chắc chắn muốn xóa tiến độ và làm mới tất cả các vòng kiểm tra?",
-          )
-        ) {
-          let testProgress =
-            JSON.parse(localStorage.getItem("study-space.test-progress.v1")) ||
-            {};
-          if (testProgress[topicId]) {
-            delete testProgress[topicId];
-            localStorage.setItem(
-              "study-space.test-progress.v1",
-              JSON.stringify(testProgress),
-            );
-            renderRounds();
-          }
-        }
-      });
-    }
-
-    const btnAddToPlan = document.getElementById("btn-add-to-plan");
-    if (btnAddToPlan) {
-      const newBtnAddToPlan = btnAddToPlan.cloneNode(true);
-      btnAddToPlan.parentNode.replaceChild(newBtnAddToPlan, btnAddToPlan);
-
-      let isSelectingDate = false;
-
-      newBtnAddToPlan.addEventListener("click", () => {
-        const dateInputs = container.querySelectorAll(".round-date-input");
-
-        if (!isSelectingDate) {
-          dateInputs.forEach((input) => input.classList.remove("d-none"));
-          newBtnAddToPlan.innerHTML = `<i class="bx bx-save me-1"></i> Xác nhận Lưu vào Kế hoạch`;
-          newBtnAddToPlan.classList.remove("btn-outline-primary");
-          newBtnAddToPlan.classList.add("btn-primary");
-          isSelectingDate = true;
-        } else {
-          const topicName = currentStudyTopic ? currentStudyTopic.name : "Từ vựng";
-
-          let todosStore =
-            JSON.parse(localStorage.getItem("studySpaceTodosByDate")) || {};
-          let addedCount = 0;
-
-          dateInputs.forEach((input, index) => {
-            const roundNum = index + 1;
-            const dateVal = input.value;
-            if (dateVal) {
-              const [y, m, d] = dateVal.split("-");
-              const todoKey = `${parseInt(y, 10)}-${parseInt(m, 10)}-${parseInt(d, 10)}`;
-
-              if (!todosStore[todoKey]) todosStore[todoKey] = [];
-
-              const taskText = `Ôn tập Flashcard: ${topicName} - Vòng ${roundNum}`;
-
-              const exists = todosStore[todoKey].find(
-                (t) => t.text === taskText,
-              );
-              if (!exists) {
-                todosStore[todoKey].push({
-                  id: Date.now() + roundNum,
-                  text: taskText,
-                  priority: "high",
-                  completed: false,
-                });
-                addedCount++;
-              }
-            }
+      newBtnReset.addEventListener("click", async () => {
+        try {
+          const delRes = await fetch(`/api/progress/${encodeURIComponent(targetTopicId)}`, {
+            method: "DELETE"
           });
-
-          if (addedCount > 0) {
-            localStorage.setItem(
-              "studySpaceTodosByDate",
-              JSON.stringify(todosStore),
-            );
-            if (window.notify)
-              window.notify(
-                `Đã thêm ${addedCount} vòng ôn tập vào Kế hoạch!`,
-                "success",
-              );
-          } else {
-            if (window.notify)
-              window.notify(
-                "Các vòng ôn tập này đã có sẵn trong lịch!",
-                "info",
-              );
+          if (delRes.ok) {
+            completedRounds = [];
+            renderRounds(completedRounds);
+            if (window.showToast) window.showToast("Đã đặt lại toàn bộ tiến độ kiểm tra!", "success");
           }
-
-          dateInputs.forEach((input) => input.classList.add("d-none"));
-          newBtnAddToPlan.classList.remove("btn-primary");
-          newBtnAddToPlan.classList.add("btn-outline-primary");
-          isSelectingDate = false;
+        } catch (err) {
+          if (window.showToast) window.showToast("Lỗi khi đặt lại tiến độ!", "danger");
         }
       });
     }
-
-    const modalEl = document.getElementById("testRoundsModal");
-    let modal = bootstrap.Modal.getInstance(modalEl);
-    if (!modal) modal = new bootstrap.Modal(modalEl);
-    modal.show();
   }
 
   init();

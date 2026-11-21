@@ -19,10 +19,13 @@ public class SecurityConfig {
                                                                 "/login",
                                                                 "/register",
                                                                 "/reset-password",
+                                                                "/api/auth/mobile-login",
                                                                 "/api/auth/reset-password",
+                                                                "/api/auth/forgot-password",
                                                                 "/css/**",
                                                                 "/js/**",
                                                                 "/images/**",
+                                                                "/assets/**",
                                                                 "/favicon.ico")
                                                 .permitAll()
                                                 .anyRequest().authenticated())
@@ -40,22 +43,4 @@ public class SecurityConfig {
 
                 return http.build();
         }
-
-        // @Bean
-        // PasswordEncoder passwordEncoder() {
-        //         // Tự tạo PasswordEncoder thuần (không dùng class deprecated)
-        //         return new PasswordEncoder() {
-        //                 @Override
-        //                 public String encode(CharSequence rawPassword) {
-        //                         return rawPassword != null ? rawPassword.toString() : "";
-        //                 }
-
-        //                 @Override
-        //                 public boolean matches(CharSequence rawPassword, String encodedPassword) {
-        //                         if (rawPassword == null || encodedPassword == null)
-        //                                 return false;
-        //                         return rawPassword.toString().equals(encodedPassword);
-        //                 }
-        //         };
-        // }
 }

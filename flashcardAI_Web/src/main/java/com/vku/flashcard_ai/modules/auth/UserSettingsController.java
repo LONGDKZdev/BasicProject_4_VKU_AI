@@ -1,9 +1,6 @@
 package com.vku.flashcard_ai.modules.auth;
 
 import com.vku.flashcard_ai.core.mail.EmailService;
-
-import lombok.RequiredArgsConstructor;
-
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -16,11 +13,16 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/settings")
 @CrossOrigin(origins = "*")
-@RequiredArgsConstructor
 public class UserSettingsController {
 
     private final AuthService authService;
     private final EmailService emailService;
+
+    // Viết constructor tường minh, không dùng @RequiredArgsConstructor
+    public UserSettingsController(AuthService authService, EmailService emailService) {
+        this.authService = authService;
+        this.emailService = emailService;
+    }
 
     @GetMapping("/profile")
     public ResponseEntity<UserAccount> getProfile(Principal principal) {

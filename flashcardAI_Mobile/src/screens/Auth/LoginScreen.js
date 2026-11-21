@@ -15,7 +15,7 @@ import {
   Alert,
   ActivityIndicator,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context"; // <-- Import chuẩn xác
+import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons as Icon } from "@expo/vector-icons";
 
 // Import công cụ của Firebase
@@ -50,15 +50,26 @@ export default function LoginScreen({ navigation }) {
         },
         {
           withCredentials: true,
-          timeout: 7000,
+          timeout: 5000,
         }
       );
 
       const userData = response.data;
+      if (!userData || typeof userData !== "object" || !userData.userId) {
+        throw new Error("Phản hồi từ Backend không đúng định dạng JSON User");
+      }
+
       await login(userData);
       navigation.replace("App");
     } catch (error) {
-      console.warn("⚠️ Backend không phản hồi hoặc lỗi xác thực, chuyển sang fallback Firestore...", error?.message);
+      // Nếu lỗi 401 từ Backend nghĩa là sai tài khoản/mật khẩu
+      if (error?.response?.status === 401) {
+        Alert.alert("Đăng nhập thất bại", "Tên đăng nhập hoặc mật khẩu không chính xác!");
+        setIsLoading(false);
+        return;
+      }
+
+      console.warn("⚠️ Backend không phản hồi, chuyển sang fallback Firestore...", error?.message);
 
       // 2. Chế độ dự phòng (Fallback): Tra cứu trực tiếp Firestore
       try {
@@ -85,7 +96,7 @@ export default function LoginScreen({ navigation }) {
         }
 
         await login({
-          userId: userDoc.id,
+          userId: userData.userId || userDoc.id,
           ...userData,
         });
 

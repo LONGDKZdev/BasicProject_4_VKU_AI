@@ -1,5 +1,9 @@
 package com.vku.flashcard_ai.modules.ai;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.google.api.core.ApiFuture;
 import com.google.cloud.firestore.*;
 import com.google.firebase.cloud.FirestoreClient;
@@ -16,6 +20,11 @@ import java.util.concurrent.ExecutionException;
 public class ChatHistoryService {
 
     private static final String COLLECTION_NAME = "ai_chat_histories";
+    private final ObjectMapper objectMapper;
+
+    public ChatHistoryService(ObjectMapper objectMapper) {
+        this.objectMapper = objectMapper;
+    }
 
     public String getUserIdByUsername(String username) {
         try {
@@ -32,7 +41,7 @@ public class ChatHistoryService {
         } catch (Exception e) {
             e.printStackTrace();
         }
-        return username; 
+        return username;
     }
 
     public List<AiChatHistory> getHistoriesByUser(String username) throws ExecutionException, InterruptedException {
@@ -140,28 +149,30 @@ public class ChatHistoryService {
 
             Firestore db = FirestoreClient.getFirestore();
             DocumentReference docRef = db.collection(COLLECTION_NAME).document(chatId);
-            
+
             ApiFuture<DocumentSnapshot> future = docRef.get();
             DocumentSnapshot document = future.get();
-            
-            String safeMsgText = messageText != null ? messageText : "";
-            String escapedMsg = safeMsgText.replace("\\", "\\\\").replace("\"", "\\\"").replace("\n", "\\n").replace("\r", "");
-            
-            // Bổ sung trường modelType vào JSON lưu trên Firebase
-            String safeModelType = (modelType != null) ? modelType : "gemini";
-            String newMsgJson = "{\"sender\":\"" + sender + "\",\"content\":\"" + escapedMsg + "\",\"modelType\":\"" + safeModelType + "\",\"timestamp\":" + System.currentTimeMillis() + "}";
 
             if (document != null && document.exists()) {
                 AiChatHistory history = document.toObject(AiChatHistory.class);
                 String currentJson = (history != null && history.getMessagesJson() != null) ? history.getMessagesJson() : "[]";
-                
-                if (currentJson.equals("[]") || currentJson.trim().isEmpty()) {
-                    currentJson = "[" + newMsgJson + "]";
-                } else if (currentJson.length() > 1) {
-                    currentJson = currentJson.substring(0, currentJson.length() - 1) + "," + newMsgJson + "]";
+
+                ArrayNode messagesArray;
+                try {
+                    JsonNode existingNode = objectMapper.readTree(currentJson);
+                    messagesArray = existingNode.isArray() ? (ArrayNode) existingNode : objectMapper.createArrayNode();
+                } catch (Exception e) {
+                    messagesArray = objectMapper.createArrayNode();
                 }
-                
-                docRef.update("messagesJson", currentJson, "updatedAt", System.currentTimeMillis()).get();
+
+                ObjectNode newMsgObj = messagesArray.addObject();
+                newMsgObj.put("sender", sender);
+                newMsgObj.put("content", messageText != null ? messageText : "");
+                newMsgObj.put("modelType", modelType != null ? modelType : "gemini");
+                newMsgObj.put("timestamp", System.currentTimeMillis());
+
+                String updatedJson = objectMapper.writeValueAsString(messagesArray);
+                docRef.update("messagesJson", updatedJson, "updatedAt", System.currentTimeMillis()).get();
             }
         } catch (Exception e) {
             e.printStackTrace();
@@ -177,11 +188,9 @@ public class ChatHistoryService {
             if (doc.exists()) {
                 AiChatHistory currentChat = doc.toObject(AiChatHistory.class);
 
-                // Nếu là đổi tên cho bản Gốc (Topic Header)
                 if (chatId.endsWith("-origin") || "TOPIC_ORIGIN".equals(currentChat.getChatType())) {
                     String groupId = currentChat.getGroupId();
-                    
-                    // Lấy toàn bộ các đoạn chat con thuộc nhóm này
+
                     List<QueryDocumentSnapshot> groupDocs = db.collection(COLLECTION_NAME)
                             .whereEqualTo("groupId", groupId)
                             .get().get().getDocuments();
@@ -197,7 +206,6 @@ public class ChatHistoryService {
                         }
                     }
                 } else {
-                    // Nếu đổi tên một đoạn chat lẻ
                     docRef.update("title", newTitle).get();
                 }
             }
